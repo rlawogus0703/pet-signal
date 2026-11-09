@@ -1,0 +1,5 @@
+# Optional heavy models — install only when AI similarity is needed
+sentence-transformers>=3.0.0
+torch>=2.2.0
+Pillow>=10.0.0
+open-clip-torch>=2.24.0

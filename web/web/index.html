@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="펫 시그널 - 실종견과 닮은 보호소 공고를 자동으로 찾아 추천 이유와 함께 보여주는 유사 후보 매칭 서비스 (10조)">
+  <meta name="theme-color" content="#16233F">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="펫 시그널">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="icon" type="image/png" href="favicon.png"/>
+  <title>펫 시그널 · 실종견 유사 후보 매칭</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    html, body { margin: 0; height: 100%; background: #FAF7F4; }
+    #splash { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 18px; font-family: -apple-system, "Malgun Gothic", sans-serif; transition: opacity .3s; }
+    #splash .logo { width: 72px; height: 72px; border-radius: 22px; background: linear-gradient(135deg,#FF6B4A,#FF9A6B);
+      box-shadow: 0 12px 30px rgba(255,107,74,.35); animation: pulse 1.2s ease-in-out infinite; }
+    #splash .t { font-size: 22px; font-weight: 800; color: #16233F; letter-spacing: -0.5px; }
+    #splash .s { font-size: 13px; color: #6B7280; }
+    @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+  </style>
+</head>
+<body>
+  <div id="splash"><div class="logo"></div><div class="t">펫 시그널</div><div class="s">유사 후보를 불러오는 중…</div></div>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var el = document.getElementById('splash');
+      if (el) { el.style.opacity = '0'; setTimeout(function () { el.remove(); }, 320); }
+    });
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
