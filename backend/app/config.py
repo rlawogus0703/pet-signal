@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     collect_states: str = "notice,protect"
     collect_protect_days: int = 90
     # 사진 임베딩은 한 번에 다 하지 않고 수집 1회마다 조금씩 (무료 서버 메모리·시간 보호)
-    embed_batch_per_run: int = 1500
+    embed_batch_per_run: int = 3000
     embed_chunk: int = 100
     embed_time_budget_seconds: int = 1200
     # 목록에서 빠진(입양·반환 등) 공고는 매칭에서 빼고, 오래되면 DB 에서 정리

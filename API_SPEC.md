@@ -280,7 +280,7 @@ Header: `Authorization: Bearer <token>`
 ## 6. 공고 시드/수집 (서버 운영)
 
 - `POST /api/v1/admin/seed` — 예시 공고 적재 (키 없이 시연)
-- `POST /api/v1/admin/collect?embed_images=true` — 공공 API 수집 (`SERVICE_KEY` 필요). 기본은 전국 공고중 전부 + 보호중 최근 90일 (1000건 × 페이지 끝까지), 사진 임베딩은 최대 1,500장씩 이어서 계산
+- `POST /api/v1/admin/collect?embed_images=true` — 공공 API 수집 (`SERVICE_KEY` 필요). 기본은 전국 공고중 전부 + 보호중 최근 90일 (1000건 × 페이지 끝까지), 사진 임베딩은 최대 3,000장씩 이어서 계산
 - `GET /api/v1/notices/{notice_id}/photo?n=1|2` — 공고 사진 (서버 캐시 경유, CORS 허용)
 - `GET /api/v1/lost-dogs/{id}/photo` — 보호자가 올린 사진
 - `GET /api/v1/system` — 모드(api/sample), 공고 수, 사진 임베딩 수, 텍스트·이미지 방식, 가중치
