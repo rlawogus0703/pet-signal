@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.api.auth_deps import get_optional_user
+from app.api.auth_deps import get_optional_user, require_admin_key
 from app.database import get_db
 from app.models.db_models import UserRow
 from app.models.db_models import LostDogRow, MatchResultRow, NoticeRow, NotificationRow
@@ -28,6 +28,7 @@ from app.models.schemas import (
 from app.ai import image_embedder, text_similarity
 from app.ai.fusion import MODAL_WEIGHTS, RULE_WEIGHTS
 from app.config import get_settings
+from app.services.collect_lock import acquire_collect_lock, release_collect_lock
 from app.services.collector import collect_notices
 from app.services.image_index import notice_photo_bytes, save_dog_photo
 from app.services.matching_service import rematch_lost_dog
@@ -286,7 +287,10 @@ def mark_read(notification_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/admin/seed")
-def admin_seed(db: Session = Depends(get_db)):
+def admin_seed(
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin_key),
+):
     n = seed_notices(db)
     return {"ok": True, "inserted": n}
 
@@ -297,9 +301,15 @@ def admin_collect(
     rows: int | None = Query(None, ge=1, le=1000, description="페이지당 건수 (기본 1000)"),
     embed_images: bool = Query(True),
     db: Session = Depends(get_db),
+    _: None = Depends(require_admin_key),
 ):
-    """공공 API 수집 (SERVICE_KEY 필요). 수집 후 사진 임베딩까지 계산."""
-    return collect_notices(db, pages=pages, num_of_rows=rows, embed_images=embed_images)
+    """공공 API 수집 (SERVICE_KEY 필요). 수집 후 사진 임베딩까지 계산. 이미 수집 중이면 409."""
+    if not acquire_collect_lock():
+        raise HTTPException(status_code=409, detail="collection already running")
+    try:
+        return collect_notices(db, pages=pages, num_of_rows=rows, embed_images=embed_images)
+    finally:
+        release_collect_lock()
 
 
 

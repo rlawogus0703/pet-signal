@@ -8,13 +8,13 @@ import threading
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
 
 from app.api.auth_routes import router as auth_router
 from app.api.routes import router
 from app.config import LOCAL_ORIGIN_REGEX, get_settings, redact_secrets
 from app.console import make_console_safe
-from app.database import SessionLocal, engine, init_db
+from app.database import SessionLocal, init_db
+from app.services.collect_lock import acquire_collect_lock, release_collect_lock
 from app.services.collector import collect_notices
 from app.services.seed import seed_if_needed
 
@@ -55,10 +55,6 @@ app.include_router(auth_router)
 app.include_router(router)
 
 _scheduler: BackgroundScheduler | None = None
-_collect_lock = threading.Lock()
-# PostgreSQL 세션 레벨 advisory lock 에 쓰는 고정 키 (펫시그널)
-_COLLECT_LOCK_ID = 74628401
-_lock_conn = None
 
 
 @app.on_event("startup")
@@ -99,7 +95,7 @@ def on_shutdown() -> None:
     if _scheduler:
         _scheduler.shutdown(wait=False)
         _scheduler = None
-    _release_collect_lock()
+    release_collect_lock()
 
 
 @app.get("/healthz")
@@ -117,55 +113,8 @@ def health():
     }
 
 
-def _acquire_collect_lock() -> bool:
-    """프로세스 안에서는 threading.Lock, Postgres 에서는 advisory lock 으로 한 번에 하나만 수집."""
-    global _lock_conn
-    if not _collect_lock.acquire(blocking=False):
-        return False
-    if engine.dialect.name != "postgresql":
-        return True
-    try:
-        conn = engine.connect()
-        got = conn.execute(text("SELECT pg_try_advisory_lock(:k)"), {"k": _COLLECT_LOCK_ID}).scalar()
-        if not got:
-            conn.close()
-            _collect_lock.release()
-            return False
-        _lock_conn = conn
-        return True
-    except Exception:
-        log.exception("collect advisory lock failed")
-        try:
-            if _lock_conn is not None:
-                _lock_conn.close()
-        except Exception:
-            pass
-        _lock_conn = None
-        if _collect_lock.locked():
-            _collect_lock.release()
-        return False
-
-
-def _release_collect_lock() -> None:
-    global _lock_conn
-    try:
-        if _lock_conn is not None:
-            try:
-                _lock_conn.execute(text("SELECT pg_advisory_unlock(:k)"), {"k": _COLLECT_LOCK_ID})
-            except Exception:
-                pass
-            try:
-                _lock_conn.close()
-            except Exception:
-                pass
-    finally:
-        _lock_conn = None
-        if _collect_lock.locked():
-            _collect_lock.release()
-
-
 def _job_collect() -> None:
-    if not _acquire_collect_lock():
+    if not acquire_collect_lock():
         log.info("collect job skipped (already running)")
         return
     db = SessionLocal()
@@ -176,4 +125,4 @@ def _job_collect() -> None:
         log.exception("collect job failed")
     finally:
         db.close()
-        _release_collect_lock()
+        release_collect_lock()

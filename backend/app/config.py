@@ -71,6 +71,8 @@ class Settings(BaseSettings):
     match_store_top: int = 200  # 실종견 1마리당 저장할 매칭 결과 수
     match_image_top_k: int = 40  # 매칭 때 사진 임베딩이 없으면 상위 K개만 즉석 계산
     enable_scheduler: bool = True
+    # 관리자 라우트용 비밀 키. 비어 있으면 /api/v1/admin/* 는 모두 거부합니다.
+    admin_api_key: str | None = None
     cors_origins: str = DEFAULT_CORS_ORIGINS
 
     @property

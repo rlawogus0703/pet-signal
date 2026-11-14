@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from fastapi import Depends, HTTPException
+import secrets
+
+from fastapi import Depends, Header, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -39,3 +41,15 @@ def get_optional_user(
         return db.get(UserRow, payload.get("sub"))
     except Exception:
         return None
+
+
+def require_admin_key(x_admin_key: str | None = Header(default=None, alias="X-Admin-Key")) -> None:
+    """관리자 라우트는 X-Admin-Key 가 설정된 ADMIN_API_KEY 와 같아야 합니다. 키가 없으면 거부합니다."""
+    from app.config import get_settings
+
+    expected = (get_settings().admin_api_key or "").strip()
+    if not expected:
+        raise HTTPException(status_code=403, detail="admin routes disabled")
+    provided = x_admin_key or ""
+    if not secrets.compare_digest(provided, expected):
+        raise HTTPException(status_code=403, detail="invalid admin key")

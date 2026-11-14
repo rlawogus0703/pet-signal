@@ -7,3 +7,4 @@ os.environ["ENABLE_SCHEDULER"] = "false"
 # 테스트는 로컬 SQLite 를 씁니다. 셸에 DATABASE_URL 이 있어도 덮어쓰지 않도록
 # 개별 테스트가 필요할 때 monkeypatch 합니다.
 os.environ.pop("DATABASE_URL", None)
+os.environ.pop("ADMIN_API_KEY", None)

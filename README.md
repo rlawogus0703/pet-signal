@@ -199,7 +199,7 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 - 실제 공고가 들어오면 매칭은 실제 공고로만 하고, 키가 없으면 예시 공고 16건(샘플 데이터 모드)으로 동작합니다.
 - 상태 확인: http://127.0.0.1:8000/api/v1/system (모드, 공고 수, 사진 임베딩 수, 텍스트/이미지 방식, 가중치)
 - API 문서: http://127.0.0.1:8000/docs
-- 바로 수집: http://127.0.0.1:8000/docs 에서 `POST /api/v1/admin/collect`
+- 바로 수집: http://127.0.0.1:8000/docs 에서 `POST /api/v1/admin/collect` (요청 헤더 `X-Admin-Key` 가 `.env` 의 `ADMIN_API_KEY` 와 같아야 합니다. 키가 없으면 관리자 주소는 막힙니다.)
 - 수집량 조절은 `.env` 의 `COLLECT_STATES`(기본 `notice,protect`), `COLLECT_PROTECT_DAYS`(기본 90), `EMBED_BATCH_PER_RUN`(기본 3000), `COLLECT_INTERVAL_MINUTES`
 - 수집 현황(보호 중 공고 수, 사진 임베딩 수)은 `GET /api/v1/system` 의 `collection` 에서 볼 수 있습니다.
 
@@ -251,6 +251,7 @@ python -m pytest -q
 4. 환경 변수에 다음을 **대시보드에서만** 넣습니다.
    - `SERVICE_KEY` — 공공데이터포털 Decoding 키
    - `DATABASE_URL` — Neon 연결 주소 (`postgresql://...` 그대로 넣어도 서버가 `postgresql+psycopg://` 로 변환합니다. `sslmode=require` 가능)
+   - `ADMIN_API_KEY` — 관리자 주소(`POST /api/v1/admin/collect`, `/admin/seed`)용 비밀 키. 요청 헤더 `X-Admin-Key` 와 같아야 합니다. 비워 두면 관리자 주소는 거부됩니다. GitHub 에 올리지 마세요.
 5. 배포가 끝나면 주소(예: `https://pet-signal-api.onrender.com`)가 생깁니다. `/healthz` 가 `{"ok": true}` 이면 성공입니다. `/api/v1/system` 에서 `"mode": "api"` 와 공고 수를 확인할 수 있습니다.
 6. 서버는 60분마다 공고를 다시 수집합니다 (`COLLECT_INTERVAL_MINUTES`). Render 무료 플랜은 인스턴스가 하나라 수집이 겹치지 않게 잠금을 씁니다.
 
