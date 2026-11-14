@@ -60,8 +60,10 @@ flowchart LR
 pet-signal/
   API_SPEC.md          # 공유 REST 계약 (+ /auth/*)
   README.md
-  web/                 # Flutter Web (재현) — 기본 Mock 모드
-  backend/             # FastAPI + SQLite/PostgreSQL
+  render.yaml          # Render 무료 웹 서비스 (backend)
+  tools/deploy_pages.sh  # Flutter web 을 gh-pages 브랜치에 올리는 스크립트
+  web/                 # Flutter Web (재현) — 기본 Mock, 배포 빌드는 API 모드
+  backend/             # FastAPI + SQLite/PostgreSQL(Neon)
 ```
 
 ---
@@ -208,6 +210,63 @@ python -m pytest -q
 
 ---
 
+## 배포 (GitHub Pages + Render + Neon)
+
+노트북이 꺼져 있어도 누구나 쓸 수 있게, 웹은 GitHub Pages, API 서버는 Render 무료 플랜, DB 는 Neon PostgreSQL 에 올립니다. 인증키와 DB 주소는 GitHub 에 올리지 마세요.
+
+### 1) Neon DB
+
+1. [Neon 콘솔](https://console.neon.tech)에서 프로젝트(`pet-signal`)를 만듭니다. 지역은 Singapore처럼 가까운 곳을 권장합니다.
+2. **Connect** 에서 `postgresql://` 로 시작하는 연결 주소를 복사합니다 (비밀번호가 보이도록 한 다음).
+
+### 2) GitHub 에 코드 올리기
+
+이 저장소(`https://github.com/rlawogus0703/pet-signal`)의 `main` 브랜치에 푸시합니다. `backend/.env` 는 `.gitignore` 에 있어서 올라가지 않습니다.
+
+### 3) Render 에 API 서버 올리기
+
+1. [Render](https://render.com)에 GitHub 계정으로 로그인합니다.
+2. **New → Blueprint** 로 이 저장소를 연결하거나, `render.yaml` 이 있는 저장소를 선택합니다.
+3. 서비스 이름 `pet-signal-api`(무료 플랜). 빌드는 `backend` 폴더에서 `pip install -r requirements.txt` 만 합니다 (CLIP 등 AI 추가는 설치하지 않아 메모리를 낮춥니다).
+4. 환경 변수에 다음을 **대시보드에서만** 넣습니다.
+   - `SERVICE_KEY` — 공공데이터포털 Decoding 키
+   - `DATABASE_URL` — Neon 연결 주소 (`postgresql://...` 그대로 넣어도 서버가 `postgresql+psycopg://` 로 변환합니다. `sslmode=require` 가능)
+5. 배포가 끝나면 주소(예: `https://pet-signal-api.onrender.com`)가 생깁니다. `/healthz` 가 `{"ok": true}` 이면 성공입니다. `/api/v1/system` 에서 `"mode": "api"` 와 공고 수를 확인할 수 있습니다.
+6. 서버는 60분마다 공고를 다시 수집합니다 (`COLLECT_INTERVAL_MINUTES`). Render 무료 플랜은 인스턴스가 하나라 수집이 겹치지 않게 잠금을 씁니다.
+
+시작 명령: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+
+### 4) GitHub Pages 에 웹 올리기 (`gh-pages` 브랜치)
+
+워크플로 파일 없이, 빌드된 웹을 `gh-pages` 브랜치에 올려 Pages 원본으로 씁니다.
+
+1. Render 주소를 확인한 뒤, 저장소 루트에서 아래를 실행합니다 (Linux/macOS, 또는 Git Bash).
+
+```bash
+./tools/deploy_pages.sh https://pet-signal-api.onrender.com
+```
+
+스크립트는 `flutter build web --release --base-href /pet-signal/ --no-web-resources-cdn --dart-define=API_BASE_URL=<렌더주소>` 로 빌드하고, `.nojekyll` 을 넣은 뒤 `gh-pages` 브랜치(orphan)에 올립니다.
+
+2. 저장소 **Settings → Pages → Build and deployment → Source** 를 **Deploy from a branch** 로 두고, 브랜치는 `gh-pages` / 폴더는 `/` (root) 입니다.
+3. 주소: `https://rlawogus0703.github.io/pet-signal/`  (빌드 때 API 주소가 들어 있으면 앱이 API 모드로 시작합니다.)
+
+Windows에서 직접 빌드만 하려면:
+
+```bat
+set PATH=C:\dev\flutter\bin;%PATH%
+cd C:\dev\pet-signal\web
+flutter build web --release --base-href /pet-signal/ --no-web-resources-cdn --dart-define=API_BASE_URL=https://pet-signal-api.onrender.com
+```
+
+서버 CORS 는 GitHub Pages(`https://rlawogus0703.github.io`)와 localhost(임의 포트)를 기본으로 허용합니다.
+
+### 5) 서버가 잠들지 않게 하기 (선택)
+
+Render 무료 플랜은 잠시 접속이 없으면 잠들 수 있습니다. 발표 전에 `/healthz` 를 한 번 열어 두면 깨어납니다.
+
+---
+
 ## 인증 API 요약
 
 - `POST /auth/signup` — 회원가입 (이메일, 비밀번호, 이름, 전화 선택)
@@ -219,7 +278,7 @@ python -m pytest -q
 
 ## 다음 단계
 
-1. 백엔드 담당 확정 후 PostgreSQL·스케줄러 주기·가중치 튜닝
-2. ~~공공 API 키 발급 후 `SERVICE_KEY`로 실공고 수집~~ (완료: `backend/.env`)
+1. ~~공공 API 키 발급 후 `SERVICE_KEY`로 실공고 수집~~ (완료)
+2. Render + Neon + GitHub Pages 배포 (위 절차)
 3. 민재 앱과 API_SPEC 동기화 (`age`, `image`/`text`, auth)
 4. FCM 푸시는 시연용 알림 화면으로 대체 가능 → 이후 연동

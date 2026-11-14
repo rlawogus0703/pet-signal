@@ -6,10 +6,11 @@ import json
 from datetime import date
 from pathlib import Path
 
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.ai import text_embedder, text_similarity
-from app.models.db_models import NoticeRow
+from app.models.db_models import MatchResultRow, NoticeRow, NotificationRow
 from app.services.matcher import dumps_emb
 from app.services.normalizer import norm_breed, norm_color
 
@@ -73,3 +74,32 @@ def seed_notices(db: Session, *, embed_images: bool = True) -> int:
 
         embed_notices(db, rows)
     return count
+
+
+
+def has_real_notices(db: Session) -> bool:
+    n = db.scalar(select(func.count()).where(NoticeRow.source != "seed")) or 0
+    return n > 0
+
+
+def remove_seed_notices(db: Session) -> int:
+    """실제 공공 API 공고가 있을 때 예시(시드) 공고와 관련 매칭/알림을 지웁니다."""
+    ids = list(db.scalars(select(NoticeRow.notice_id).where(NoticeRow.source == "seed")))
+    if not ids:
+        return 0
+    db.execute(delete(MatchResultRow).where(MatchResultRow.notice_id.in_(ids)))
+    db.execute(delete(NotificationRow).where(NotificationRow.notice_id.in_(ids)))
+    deleted = db.execute(delete(NoticeRow).where(NoticeRow.source == "seed")).rowcount or 0
+    db.commit()
+    return deleted
+
+
+def seed_if_needed(db: Session) -> int:
+    """실제 공고가 있으면 시드를 넣지 않고, 남아 있는 시드 공고는 제거합니다."""
+    if has_real_notices(db):
+        removed = remove_seed_notices(db)
+        if removed:
+            import logging
+            logging.getLogger("petsignal").info("removed %s seed notices (real API data present)", removed)
+        return 0
+    return seed_notices(db)

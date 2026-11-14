@@ -133,4 +133,9 @@ def collect_notices(
     if embed_images and touched:
         notices = [db.get(NoticeRow, nid) for nid in dict.fromkeys(touched)]
         result["images"] = embed_notices(db, [n for n in notices if n is not None])
+    # 실제 공고가 들어오면 예시(시드) 데이터는 매칭에서 빼고 DB 에서도 정리
+    if result.get("ok") and result.get("fetched"):
+        from app.services.seed import remove_seed_notices
+
+        result["seed_removed"] = remove_seed_notices(db)
     return result

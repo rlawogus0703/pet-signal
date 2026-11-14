@@ -7,7 +7,7 @@ import 'state/app_state.dart';
 import 'theme/app_theme.dart';
 
 /// 펫 시그널 웹 (10조 · 재현)
-/// 기본: Mock 모드 (백엔드 없이 동작). 상단 모드 버튼으로 API 연동.
+/// 기본: Mock 모드. --dart-define=API_BASE_URL=... 로 빌드하면 API 모드로 시작.
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(PetSignalApp(state: AppState()));

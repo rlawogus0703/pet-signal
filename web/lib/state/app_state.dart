@@ -21,9 +21,17 @@ class MyDog {
   final String? photoAsset;
 }
 
+/// 빌드 시 --dart-define=API_BASE_URL=... 로 넣으면 API 모드로 시작합니다.
+const String kBuiltInApiBaseUrl = String.fromEnvironment('API_BASE_URL');
+
 /// 앱 전역 상태: 모드(Mock/API), 인증, 내 실종견, 탭, 알림 수
 class AppState extends ChangeNotifier {
   AppState() {
+    final builtIn = kBuiltInApiBaseUrl.trim();
+    if (builtIn.isNotEmpty) {
+      useApi = true;
+      apiBaseUrl = builtIn;
+    }
     _build();
   }
 

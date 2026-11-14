@@ -1,0 +1,28 @@
+# Render Blueprint — 무료 웹 서비스 (FastAPI).
+# 대시보드에서 이 파일을 불러온 뒤 SERVICE_KEY, DATABASE_URL 을 직접 넣으세요.
+# CLIP 등 무거운 AI 패키지는 설치하지 않습니다 (색상 히스토그램 fallback).
+services:
+  - type: web
+    name: pet-signal-api
+    runtime: python
+    plan: free
+    region: singapore
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: SERVICE_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: COLLECT_INTERVAL_MINUTES
+        value: "60"
+      - key: COLLECT_ON_STARTUP
+        value: "true"
+      - key: COLLECT_PAGES
+        value: "1"
+      - key: COLLECT_ROWS
+        value: "50"

@@ -8,14 +8,15 @@ import threading
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.api.auth_routes import router as auth_router
 from app.api.routes import router
-from app.config import get_settings
+from app.config import LOCAL_ORIGIN_REGEX, get_settings, redact_secrets
 from app.console import make_console_safe
-from app.database import SessionLocal, init_db
+from app.database import SessionLocal, engine, init_db
 from app.services.collector import collect_notices
-from app.services.seed import seed_notices
+from app.services.seed import seed_if_needed
 
 make_console_safe()
 logging.basicConfig(level=logging.INFO)
@@ -32,18 +33,32 @@ app = FastAPI(
 )
 
 origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins if origins != ["*"] else ["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+if origins == ["*"]:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_origin_regex=LOCAL_ORIGIN_REGEX,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 app.include_router(auth_router)
 app.include_router(router)
 
 _scheduler: BackgroundScheduler | None = None
+_collect_lock = threading.Lock()
+# PostgreSQL 세션 레벨 advisory lock 에 쓰는 고정 키 (펫시그널)
+_COLLECT_LOCK_ID = 74628401
+_lock_conn = None
 
 
 @app.on_event("startup")
@@ -52,27 +67,30 @@ def on_startup() -> None:
     init_db()
     db = SessionLocal()
     try:
-        seed_notices(db)
+        seed_if_needed(db)
     finally:
         db.close()
 
     if settings.decoded_service_key and settings.collect_on_startup:
         log.info("SERVICE_KEY found - collecting public notices in background (API mode)")
-        threading.Thread(target=_job_collect, daemon=True).start()
+        threading.Thread(target=_job_collect, daemon=True, name="collect-startup").start()
 
     if settings.enable_scheduler and settings.decoded_service_key:
         _scheduler = BackgroundScheduler()
         _scheduler.add_job(
             _job_collect,
             "interval",
-            minutes=settings.collect_interval_minutes,
+            minutes=max(1, settings.collect_interval_minutes),
             id="collect_notices",
             replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=300,
         )
         _scheduler.start()
-        log.info("APScheduler started (every %s min)", settings.collect_interval_minutes)
+        log.info("APScheduler started (every %s min, single-instance)", settings.collect_interval_minutes)
     else:
-        log.info("Scheduler disabled or SERVICE_KEY missing - sample(seed) mode")
+        log.info("Scheduler disabled or SERVICE_KEY missing - sample(seed) mode if no real notices")
 
 
 @app.on_event("shutdown")
@@ -81,17 +99,13 @@ def on_shutdown() -> None:
     if _scheduler:
         _scheduler.shutdown(wait=False)
         _scheduler = None
+    _release_collect_lock()
 
 
-def _job_collect() -> None:
-    db = SessionLocal()
-    try:
-        result = collect_notices(db)
-        log.info("collect job: %s", result)
-    except Exception:
-        log.exception("collect job failed")
-    finally:
-        db.close()
+@app.get("/healthz")
+def healthz():
+    """cron-job.org 등 keep-alive 용 가벼운 엔드포인트 (DB 조회 없음)."""
+    return {"ok": True}
 
 
 @app.get("/health")
@@ -101,3 +115,65 @@ def health():
         "service": "pet-signal",
         "mode": "api" if settings.decoded_service_key else "sample",
     }
+
+
+def _acquire_collect_lock() -> bool:
+    """프로세스 안에서는 threading.Lock, Postgres 에서는 advisory lock 으로 한 번에 하나만 수집."""
+    global _lock_conn
+    if not _collect_lock.acquire(blocking=False):
+        return False
+    if engine.dialect.name != "postgresql":
+        return True
+    try:
+        conn = engine.connect()
+        got = conn.execute(text("SELECT pg_try_advisory_lock(:k)"), {"k": _COLLECT_LOCK_ID}).scalar()
+        if not got:
+            conn.close()
+            _collect_lock.release()
+            return False
+        _lock_conn = conn
+        return True
+    except Exception:
+        log.exception("collect advisory lock failed")
+        try:
+            if _lock_conn is not None:
+                _lock_conn.close()
+        except Exception:
+            pass
+        _lock_conn = None
+        if _collect_lock.locked():
+            _collect_lock.release()
+        return False
+
+
+def _release_collect_lock() -> None:
+    global _lock_conn
+    try:
+        if _lock_conn is not None:
+            try:
+                _lock_conn.execute(text("SELECT pg_advisory_unlock(:k)"), {"k": _COLLECT_LOCK_ID})
+            except Exception:
+                pass
+            try:
+                _lock_conn.close()
+            except Exception:
+                pass
+    finally:
+        _lock_conn = None
+        if _collect_lock.locked():
+            _collect_lock.release()
+
+
+def _job_collect() -> None:
+    if not _acquire_collect_lock():
+        log.info("collect job skipped (already running)")
+        return
+    db = SessionLocal()
+    try:
+        result = collect_notices(db)
+        log.info("collect job: %s", redact_secrets(str(result), settings.decoded_service_key))
+    except Exception:
+        log.exception("collect job failed")
+    finally:
+        db.close()
+        _release_collect_lock()
