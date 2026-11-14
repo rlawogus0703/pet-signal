@@ -4,6 +4,24 @@
 
 > 결과는 동일 개체로 단정하지 않습니다. 공고 원문(animal.go.kr)과 사진을 보호자·보호소가 직접 확인합니다.
 
+## 🌐 라이브 데모
+
+- 웹: https://rlawogus0703.github.io/pet-signal/ (데모 계정으로 바로 시작 가능)
+- API 서버: https://pet-signal-api.onrender.com (무료 플랜이라 첫 접속 시 30초~1분 깨어나는 시간이 있어요)
+
+| 홈 | 시스템 구성도 |
+|---|---|
+| ![홈](screenshots/live_01_home.png) | ![구성도](screenshots/live_01b_architecture.png) |
+
+**실종견 등록 (사진 + 특징)**
+![등록](screenshots/live_02_register.png)
+
+**실제 보호소 공고 후보 목록**
+![후보](screenshots/live_03_candidates.png)
+
+**추천 이유 상세 (텍스트 · 이미지 · 멀티모달 점수)**
+![상세](screenshots/live_04_detail.png)
+
 ## 팀 역할 (10조)
 
 | 역할 | 담당 | 범위 |
