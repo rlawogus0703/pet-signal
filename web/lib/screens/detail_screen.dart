@@ -112,10 +112,11 @@ class _DetailScreenState extends State<DetailScreen> {
           ),
         ]);
     final mine = labeled(
-        DogPhoto(bytes: d.photoBytes, asset: d.photoAsset, breed: d.dog.breed, radius: 20), '내 강아지 · ${d.name}');
+        DogPhoto(bytes: d.photoBytes, asset: d.photoAsset, radius: 20), '내 강아지 · ${d.name}');
     final shelter = labeled(
         DogPhoto(
           url: c.displayPhotoUrl,
+          fallbackUrl: c.photo2ProxyUrl ?? c.photoUrl2,
           noticeId: c.noticeId,
           breed: c.source == 'seed' ? c.breed : null,
           radius: 20,
@@ -349,14 +350,14 @@ class _DetailScreenState extends State<DetailScreen> {
           const SizedBox(height: 20),
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             head(widget.myDog.name,
-                DogPhoto(bytes: widget.myDog.photoBytes, asset: widget.myDog.photoAsset, breed: d.breed, radius: 20),
+                DogPhoto(bytes: widget.myDog.photoBytes, asset: widget.myDog.photoAsset, radius: 20),
                 '보호자 등록 정보'),
             const Padding(
               padding: EdgeInsets.only(top: 70),
               child: Icon(Icons.compare_arrows_rounded, color: AppColors.coral, size: 32),
             ),
             head('공고 ${c.noticeNo.split('-').last}',
-                DogPhoto(url: c.displayPhotoUrl, noticeId: c.noticeId, breed: c.source == 'seed' ? c.breed : null, radius: 20),
+                DogPhoto(url: c.displayPhotoUrl, fallbackUrl: c.photo2ProxyUrl ?? c.photoUrl2, noticeId: c.noticeId, breed: c.source == 'seed' ? c.breed : null, radius: 20),
                 c.shelterName),
           ]),
           const SizedBox(height: 20),

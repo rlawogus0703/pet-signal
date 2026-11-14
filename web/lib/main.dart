@@ -33,9 +33,9 @@ class PetSignalApp extends StatelessWidget {
 
 /// URL 파라미터로 바로 시연 화면 열기
 ///   ?demo=1            데모 로그인 + 예시 실종견 등록 → 유사 후보
-///   ?demo=1&tab=3      (0 홈, 1 등록, 2 후보, 3 알림, 4 마이페이지)
+///   ?demo=1&tab=4      (0 홈, 1 가까운 공고, 2 등록, 3 후보, 4 알림, 5 마이페이지)
 ///   ?demo=1&detail=1   1위 후보 상세 화면
-///   ?login=1&tab=1     데모 로그인만
+///   ?login=1&tab=2     데모 로그인 후 등록 화면
 class _Bootstrap extends StatefulWidget {
   const _Bootstrap({required this.child});
   final Widget child;
@@ -61,7 +61,7 @@ class _BootstrapState extends State<_Bootstrap> {
         await s.demoLogin();
       }
       final tab = int.tryParse(q['tab'] ?? '');
-      if (tab != null) s.goTab(tab.clamp(0, 4));
+      if (tab != null) s.goTab(tab.clamp(0, 5));
       final d = s.selectedDog;
       if (q['detail'] != null && d != null && mounted) {
         final list = await s.repo.getCandidates(d.dog.id);

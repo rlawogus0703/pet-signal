@@ -57,6 +57,7 @@ class CandidateCard extends StatelessWidget {
                 aspectRatio: 4 / 3,
                 child: DogPhoto(
                   url: c.displayPhotoUrl,
+                  fallbackUrl: c.photo2ProxyUrl ?? c.photoUrl2,
                   noticeId: c.noticeId,
                   breed: c.source == 'seed' ? c.breed : null,
                   radius: 0,

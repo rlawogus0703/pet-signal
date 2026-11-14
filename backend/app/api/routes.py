@@ -22,6 +22,8 @@ from app.models.schemas import (
     NotificationListOut,
     NotificationOut,
     ScoreBreakdown,
+    NearbyNoticeOut,
+    NearbyNoticeListOut,
 )
 from app.ai import image_embedder, text_similarity
 from app.ai.fusion import MODAL_WEIGHTS, RULE_WEIGHTS
@@ -29,6 +31,7 @@ from app.config import get_settings
 from app.services.collector import collect_notices
 from app.services.image_index import notice_photo_bytes, save_dog_photo
 from app.services.matching_service import rematch_lost_dog
+from app.services.notice_query import list_nearby
 from app.services.seed import seed_notices
 
 router = APIRouter(prefix="/api/v1")
@@ -298,7 +301,93 @@ def admin_collect(
     return collect_notices(db, pages=pages, num_of_rows=rows, embed_images=embed_images)
 
 
-# ── 사진 (웹에서 CORS 없이 보기 위한 서버 경유 주소) ───────────────
+
+def _notice_public(notice: NoticeRow, dist_km: float | None = None) -> NearbyNoticeOut:
+    has_photo = bool(notice.photo_url or notice.photo_url2 or notice.photo_local)
+    nid = notice.notice_id
+    return NearbyNoticeOut(
+        notice_id=nid,
+        notice_no=notice.notice_no or "",
+        photo_url=notice.photo_url,
+        photo_url2=notice.photo_url2,
+        photo_proxy_url=f"/api/v1/notices/{nid}/photo" if has_photo else None,
+        photo2_proxy_url=f"/api/v1/notices/{nid}/photo?n=2" if notice.photo_url2 else None,
+        breed=notice.breed or "",
+        color=notice.color or "",
+        age=notice.age,
+        features=notice.features or "",
+        kind_full=notice.kind_full or "",
+        sex=notice.sex or "",
+        neuter=notice.neuter or "",
+        weight=notice.weight or "",
+        found_date=notice.found_date,
+        found_lat=notice.found_lat,
+        found_lng=notice.found_lng,
+        found_address=notice.found_address or "",
+        dist_km=None if dist_km is None else round(float(dist_km), 2),
+        shelter_name=notice.shelter_name or "",
+        shelter_phone=notice.shelter_phone or "",
+        shelter_address=notice.care_addr or "",
+        org_name=notice.org_nm or "",
+        process_state=notice.process_state or "",
+        notice_start=notice.notice_start,
+        notice_end=notice.notice_end,
+        notice_url=notice.notice_url or "",
+        source=notice.source or "seed",
+    )
+
+
+# ── 가까운 보호소 공고 (로그인 없이) ────────────────────────
+
+@router.get("/notices/nearby", response_model=NearbyNoticeListOut)
+def notices_nearby(
+    lat: float | None = Query(None),
+    lng: float | None = Query(None),
+    region: str | None = Query(None, description="시도/시군구 (좌표가 없을 때 기준점, 기본 서울)"),
+    kind: str | None = Query(None, description="품종"),
+    color: str | None = Query(None, description="색상"),
+    days: int | None = Query(None, ge=1, le=365, description="발견일 최근 N일"),
+    radius: float | None = Query(None, ge=0, le=2000, description="반경(km)"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    """로그인 없이 주변 보호소 공고를 거리순으로 봅니다."""
+    # 좌표는 둘 다 있어야 씁니다
+    if (lat is None) != (lng is None):
+        lat, lng = None, None
+    data = list_nearby(
+        db,
+        lat=lat,
+        lng=lng,
+        region=region,
+        kind=kind,
+        color=color,
+        days=days,
+        radius=radius,
+        page=page,
+        page_size=page_size,
+    )
+    items = [_notice_public(n, d) for n, d in data["items"]]
+    return NearbyNoticeListOut(
+        origin_lat=data["origin_lat"],
+        origin_lng=data["origin_lng"],
+        origin_label=data["origin_label"],
+        total=data["total"],
+        page=data["page"],
+        page_size=data["page_size"],
+        items=items,
+    )
+
+
+@router.get("/notices/{notice_id}", response_model=NearbyNoticeOut)
+def get_notice(notice_id: str, db: Session = Depends(get_db)):
+    notice = db.get(NoticeRow, notice_id)
+    if not notice:
+        raise HTTPException(404, "notice not found")
+    return _notice_public(notice)
+
+
 @router.get("/notices/{notice_id}/photo")
 def notice_photo(notice_id: str, n: int = Query(1, ge=1, le=2), db: Session = Depends(get_db)):
     notice = db.get(NoticeRow, notice_id)

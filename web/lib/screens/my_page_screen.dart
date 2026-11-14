@@ -73,7 +73,7 @@ class MyPageScreen extends StatelessWidget {
             subtitle: '${dogs.length}마리 등록됨',
             trailing: FilledButton.icon(
               style: FilledButton.styleFrom(minimumSize: const Size(0, 42)),
-              onPressed: () => s.goTab(1),
+              onPressed: () => s.goTab(2),
               icon: const Icon(Icons.add_rounded),
               label: const Text('추가 등록'),
             )),
@@ -100,7 +100,7 @@ class MyPageScreen extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               onTap: () {
                 s.selectDog(d.dog.id);
-                s.goTab(2);
+                s.goTab(3);
               },
               child: Row(children: [
                 SizedBox(
@@ -127,7 +127,7 @@ class MyPageScreen extends StatelessWidget {
                   TextButton.icon(
                     onPressed: () {
                       s.selectDog(d.dog.id);
-                      s.goTab(2);
+                      s.goTab(3);
                     },
                     icon: const Icon(Icons.manage_search_rounded),
                     label: const Text('유사 후보'),

@@ -30,7 +30,11 @@ _CLIP_OK: bool | None = None
 _FORCE_LIGHT = False
 
 CACHE_DIR = Path(__file__).resolve().parents[2] / "data" / "image_cache"
-HTTP_HEADERS = {"User-Agent": "Mozilla/5.0 (PetSignal student project)"}
+HTTP_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+    "Referer": "https://www.animal.go.kr/",
+}
 
 
 def force_light_mode(on: bool = True) -> None:
@@ -209,7 +213,9 @@ def fetch_bytes(url: str | None, *, timeout: float = 8.0, client: httpx.Client |
     cp = cache_path_for(url)
     if cp.is_file() and cp.stat().st_size > 0:
         try:
-            return cp.read_bytes()
+            cached = cp.read_bytes()
+            if looks_like_image(cached):
+                return cached
         except Exception:
             pass
     for u in candidate_urls(url):
@@ -220,8 +226,10 @@ def fetch_bytes(url: str | None, *, timeout: float = 8.0, client: httpx.Client |
                 r = httpx.get(u, timeout=timeout, follow_redirects=True, headers=HTTP_HEADERS)
             if r.status_code != 200 or not r.content:
                 continue
-            ctype = r.headers.get("content-type", "")
-            if "html" in ctype or "xml" in ctype:
+            ctype = (r.headers.get("content-type") or "").lower()
+            if ("html" in ctype or "xml" in ctype or "json" in ctype or "text/" in ctype) and not looks_like_image(r.content):
+                continue
+            if not looks_like_image(r.content):
                 continue
             CACHE_DIR.mkdir(parents=True, exist_ok=True)
             cp.write_bytes(r.content)
@@ -231,11 +239,37 @@ def fetch_bytes(url: str | None, *, timeout: float = 8.0, client: httpx.Client |
     return None
 
 
+def looks_like_image(data: bytes | None) -> bool:
+    if not data or len(data) < 24:
+        return False
+    if data[:3] == b"\xff\xd8\xff":
+        return True
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return True
+    if data[:4] == b"GIF8":
+        return True
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return True
+    return False
+
+
 def candidate_urls(url: str) -> list[str]:
-    """animal.go.kr 사진은 http 주소가 500 을 주는 경우가 있어 https 를 먼저 시도."""
-    if url.startswith("http://") and "animal.go.kr" in url:
-        return ["https://" + url[len("http://"):], url]
-    return [url]
+    """http/https 를 모두 시도합니다. animal.go.kr 는 http 가 500 을 주는 경우가 많아 https 를 먼저."""
+    out: list[str] = []
+
+    def add(u: str) -> None:
+        if u and u not in out:
+            out.append(u)
+
+    if url.startswith("http://"):
+        add("https://" + url[len("http://") :])
+        add(url)
+    elif url.startswith("https://"):
+        add(url)
+        add("http://" + url[len("https://") :])
+    else:
+        add(url)
+    return out
 
 
 def embed_image_url(url: str | None) -> list[float] | None:

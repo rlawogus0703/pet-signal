@@ -151,3 +151,45 @@ class AuthTokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserOut
+
+
+
+class NearbyNoticeOut(BaseModel):
+    notice_id: str
+    notice_no: str = ""
+    photo_url: str | None = None
+    photo_url2: str | None = None
+    photo_proxy_url: str | None = None
+    photo2_proxy_url: str | None = None
+    breed: str = ""
+    color: str = ""
+    age: str | None = None
+    features: str = ""
+    kind_full: str = ""
+    sex: str = ""
+    neuter: str = ""
+    weight: str = ""
+    found_date: date | None = None
+    found_lat: float | None = None
+    found_lng: float | None = None
+    found_address: str = ""
+    dist_km: float | None = None
+    shelter_name: str = ""
+    shelter_phone: str = ""
+    shelter_address: str = ""
+    org_name: str = ""
+    process_state: str = ""
+    notice_start: date | None = None
+    notice_end: date | None = None
+    notice_url: str = ""
+    source: str = "seed"
+
+
+class NearbyNoticeListOut(BaseModel):
+    origin_lat: float
+    origin_lng: float
+    origin_label: str
+    total: int
+    page: int
+    page_size: int
+    items: list[NearbyNoticeOut]

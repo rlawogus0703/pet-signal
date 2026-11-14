@@ -6,8 +6,12 @@ import '../matching/image_features.dart';
 import '../matching/scorer.dart';
 import '../models/app_notification.dart';
 import '../models/candidate.dart';
+import '../models/browse_notice.dart';
 import '../models/lost_dog.dart';
+import '../models/notice.dart';
+import '../matching/normalizer.dart';
 import 'mock_data.dart';
+import 'options.dart';
 import 'repository.dart';
 
 /// 오프라인 시연용: 예시 공고 + Dart 멀티모달 스코어러 (서버와 같은 공식)
@@ -129,5 +133,98 @@ class MockRepository implements PetSignalRepository {
         }
       }
     }
+  }
+
+
+  BrowseNotice _fromExample(Notice n, {double? distKm}) {
+    final asset = noticePhotoAssets[n.noticeId];
+    return BrowseNotice(
+      noticeId: n.noticeId,
+      noticeNo: n.noticeNo,
+      photoUrl: asset,
+      breed: n.breed,
+      color: n.color,
+      age: n.age,
+      features: n.features,
+      foundDate: n.foundDate,
+      foundLat: n.foundLat,
+      foundLng: n.foundLng,
+      foundAddress: n.foundAddress,
+      distKm: distKm,
+      shelterName: n.shelterName,
+      shelterPhone: n.shelterPhone,
+      shelterAddress: n.shelterAddress,
+      noticeStart: n.noticeStart,
+      noticeEnd: n.noticeEnd,
+      noticeUrl: n.noticeUrl,
+      weight: n.weight,
+      source: 'seed',
+    );
+  }
+
+  @override
+  Future<NearbyPage> listNearbyNotices({
+    double? lat,
+    double? lng,
+    String? region,
+    String? kind,
+    String? color,
+    int? days,
+    double? radius,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    var oLat = lat;
+    var oLng = lng;
+    var label = '현재 위치';
+    if (oLat == null || oLng == null) {
+      Region? r;
+      final raw = (region ?? '').trim();
+      if (raw.isNotEmpty) {
+        for (final e in regions) {
+          if (e.label == raw || e.sido == raw) { r = e; break; }
+        }
+      }
+      r ??= regions.firstWhere((e) => e.sido.startsWith('서울'), orElse: () => regions.first);
+      oLat = r.lat;
+      oLng = r.lng;
+      label = r.label;
+    }
+    final now = DateTime.now();
+    final cutoff = days == null ? null : now.subtract(Duration(days: days));
+    final rows = <BrowseNotice>[];
+    for (final n in exampleNotices()) {
+      if (kind != null && kind.trim().isNotEmpty) {
+        final q = Normalizer.normBreed(kind);
+        if (q != Normalizer.normBreed(n.breed) && !n.breed.contains(kind.trim())) continue;
+      }
+      if (color != null && color.trim().isNotEmpty) {
+        final q = Normalizer.normColor(color);
+        if (q != Normalizer.normColor(n.color) && !n.color.contains(color.trim())) continue;
+      }
+      if (cutoff != null && n.foundDate.isBefore(DateTime(cutoff.year, cutoff.month, cutoff.day))) continue;
+      double? dist;
+      if (n.foundLat != null && n.foundLng != null) {
+        dist = RuleScorer.haversineKm(oLat, oLng, n.foundLat!, n.foundLng!);
+      }
+      if (radius != null && radius > 0 && (dist == null || dist > radius)) continue;
+      rows.add(_fromExample(n, distKm: dist == null ? null : double.parse(dist.toStringAsFixed(2))));
+    }
+    rows.sort((a, b) {
+      if (a.distKm == null && b.distKm == null) return a.noticeId.compareTo(b.noticeId);
+      if (a.distKm == null) return 1;
+      if (b.distKm == null) return -1;
+      return a.distKm!.compareTo(b.distKm!);
+    });
+    final total = rows.length;
+    final start = ((page < 1 ? 1 : page) - 1) * pageSize;
+    final items = start >= rows.length ? <BrowseNotice>[] : rows.sublist(start, start + pageSize > rows.length ? rows.length : start + pageSize);
+    return NearbyPage(originLat: oLat, originLng: oLng, originLabel: label, total: total, page: page, pageSize: pageSize, items: items);
+  }
+
+  @override
+  Future<BrowseNotice> getNotice(String noticeId) async {
+    final n = exampleNotices().firstWhere((e) => e.noticeId == noticeId);
+    return _fromExample(n);
   }
 }

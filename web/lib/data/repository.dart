@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import '../models/app_notification.dart';
 import '../models/candidate.dart';
+import '../models/browse_notice.dart';
 import '../models/lost_dog.dart';
 
 /// 데이터 계층 추상 인터페이스 (Mock ↔ API 교체)
@@ -29,4 +30,19 @@ abstract class PetSignalRepository {
   Future<List<AppNotification>> getNotifications(String lostDogId);
 
   Future<void> markNotificationRead(String notificationId);
+
+  /// 로그인 없이 주변 보호소 공고 (거리순)
+  Future<NearbyPage> listNearbyNotices({
+    double? lat,
+    double? lng,
+    String? region,
+    String? kind,
+    String? color,
+    int? days,
+    double? radius,
+    int page = 1,
+    int pageSize = 20,
+  });
+
+  Future<BrowseNotice> getNotice(String noticeId);
 }

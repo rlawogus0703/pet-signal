@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../models/app_notification.dart';
 import '../models/candidate.dart';
+import '../models/browse_notice.dart';
 import '../models/lost_dog.dart';
 import 'api_auth_repository.dart';
 import 'repository.dart';
@@ -117,5 +118,54 @@ class ApiRepository implements PetSignalRepository {
       headers: _headers(),
     );
     if (res.statusCode != 200) throw StateError('mark read failed');
+  }
+
+  @override
+  Future<NearbyPage> listNearbyNotices({
+    double? lat,
+    double? lng,
+    String? region,
+    String? kind,
+    String? color,
+    int? days,
+    double? radius,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    final q = <String, String>{
+      'page': '$page',
+      'page_size': '$pageSize',
+      if (lat != null) 'lat': '$lat',
+      if (lng != null) 'lng': '$lng',
+      if (region != null && region.isNotEmpty) 'region': region,
+      if (kind != null && kind.isNotEmpty) 'kind': kind,
+      if (color != null && color.isNotEmpty) 'color': color,
+      if (days != null) 'days': '$days',
+      if (radius != null) 'radius': '$radius',
+    };
+    final res = await _client.get(_u('/api/v1/notices/nearby', q), headers: _headers());
+    if (res.statusCode != 200) {
+      throw StateError('nearby failed: ${res.statusCode} ${res.body}');
+    }
+    final j = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+    final items = ((j['items'] as List?) ?? [])
+        .map((e) => BrowseNotice.fromJson(e as Map<String, dynamic>, baseUrl: baseUrl))
+        .toList();
+    return NearbyPage(
+      originLat: (j['origin_lat'] as num).toDouble(),
+      originLng: (j['origin_lng'] as num).toDouble(),
+      originLabel: (j['origin_label'] as String?) ?? '',
+      total: (j['total'] as num?)?.toInt() ?? items.length,
+      page: (j['page'] as num?)?.toInt() ?? page,
+      pageSize: (j['page_size'] as num?)?.toInt() ?? pageSize,
+      items: items,
+    );
+  }
+
+  @override
+  Future<BrowseNotice> getNotice(String noticeId) async {
+    final res = await _client.get(_u('/api/v1/notices/$noticeId'), headers: _headers());
+    if (res.statusCode != 200) throw StateError('get notice failed: ${res.statusCode}');
+    return BrowseNotice.fromJson(jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>, baseUrl: baseUrl);
   }
 }

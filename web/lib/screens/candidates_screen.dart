@@ -41,7 +41,7 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
         title: '아직 등록한 실종견이 없어요',
         message: '실종견을 등록하면 전국 보호소 공고 중 닮은 유사 후보를 순위대로 보여드려요.',
         actionLabel: '실종견 등록하기',
-        onAction: () => s.goTab(1),
+        onAction: () => s.goTab(2),
       );
     }
     _load(s, d);

@@ -39,7 +39,7 @@ Future<void> startDemo(BuildContext context) async {
     } else {
       s.selectDog(exists.first.dog.id);
     }
-    s.goTab(2);
+    s.goTab(3);
   } catch (e) {
     messenger.showSnackBar(SnackBar(content: Text('시연 시작 실패: $e')));
   }

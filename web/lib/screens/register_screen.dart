@@ -131,7 +131,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         lostLng: double.tryParse(_lng.text) ?? _region!.lng,
         lostAddress: '${_region!.label} ${_address.text.trim()}'.trim(),
       );
-      s.goTab(2);
+      s.goTab(3);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('등록 실패: $e')));
@@ -258,7 +258,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SectionTitle('사진과 기본 정보', step: 1, subtitle: '사진은 이미지 유사도(AI) 계산에 쓰여요.'),
+        const SectionTitle('사진과 기본 정보', step: 1, subtitle: '사진이 없어도 등록할 수 있어요. 사진이 있으면 이미지 유사도도 함께 계산해요.'),
         const SizedBox(height: 20),
         if (narrow) ...[photo, const SizedBox(height: 16), fields]
         else
@@ -438,7 +438,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _lostDate != null,
       _region != null,
       _features.text.trim().length >= 4,
-      _photo != null || _photoAsset != null,
       _age.text.trim().isNotEmpty,
     ];
     final progress = filled.where((e) => e).length / filled.length;
@@ -557,7 +556,11 @@ class _PhotoDrop extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        TextButton(onPressed: onSample, child: const Text('예시 사진 사용')),
+        Wrap(spacing: 4, children: [
+          TextButton(onPressed: onSample, child: const Text('예시 사진 사용')),
+          TextButton(onPressed: onClear, child: const Text('사진 없이 등록')),
+        ]),
+        const Text('사진이 없어도 등록할 수 있어요.', style: TextStyle(fontSize: 12, color: AppColors.subtext)),
       ],
     );
   }

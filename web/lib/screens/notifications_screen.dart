@@ -76,7 +76,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         title: '받은 알림이 없어요',
         message: '실종견을 등록하면 새로운 유사 후보가 올라올 때마다 알려드려요.',
         actionLabel: '실종견 등록하기',
-        onAction: () => s.goTab(1),
+        onAction: () => s.goTab(2),
       );
     }
     return FutureBuilder<List<_Item>>(

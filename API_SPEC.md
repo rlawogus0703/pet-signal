@@ -314,3 +314,18 @@ text  = keyword 0.4 + semantic 0.4 + attribute 0.2   (attribute 없으면 재분
 ```json
 { "detail": "lost dog not found" }
 ```
+
+
+## 공고 둘러보기 (인증 불필요)
+
+`GET /api/v1/notices/nearby?lat=&lng=&region=&kind=&color=&days=&radius=&page=&page_size=`
+
+- 로그인 없이 보호소 공고를 거리순으로 봅니다.
+- `lat`+`lng` 가 있으면 그 좌표가 기준, 없으면 `region`(시도/시군구, 기본 서울특별시) 중심입니다.
+- `kind` 품종, `color` 색상, `days` 발견일 최근 N일, `radius` 반경(km), `page`/`page_size` 페이지.
+- 응답: `origin_lat`, `origin_lng`, `origin_label`, `total`, `page`, `page_size`, `items[]`
+  (사진 프록시, 품종, 색상, 발견 장소·날짜, `dist_km`, 보호소 이름·전화, 공고 기간 등).
+
+`GET /api/v1/notices/{notice_id}` — 공고 상세 (인증 불필요).
+
+실종견 등록의 `photo_data`/`photo_url` 은 선택입니다. 사진이 없으면 매칭에서 이미지 갈래를 빼고 나머지 점수로 다시 나눕니다.

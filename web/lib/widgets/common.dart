@@ -36,6 +36,7 @@ class DogPhoto extends StatelessWidget {
     this.bytes,
     this.asset,
     this.url,
+    this.fallbackUrl,
     this.noticeId,
     this.breed,
     this.radius = 16,
@@ -46,6 +47,7 @@ class DogPhoto extends StatelessWidget {
   final Uint8List? bytes;
   final String? asset;
   final String? url;
+  final String? fallbackUrl;
   final String? noticeId;
   final String? breed;
   final double radius;
@@ -59,10 +61,21 @@ class DogPhoto extends StatelessWidget {
     Widget fallback() => fallbackAsset != null
         ? Image.asset(fallbackAsset, fit: BoxFit.cover, errorBuilder: (_, _, _) => const _PhotoPlaceholder())
         : const _PhotoPlaceholder();
+    Widget network(String u, Widget Function() onErr) => Image.network(
+          u,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => onErr(),
+        );
     if (bytes != null) {
-      img = Image.memory(bytes!, fit: BoxFit.cover);
+      img = Image.memory(bytes!, fit: BoxFit.cover, errorBuilder: (_, _, _) => fallback());
     } else if (url != null && url!.startsWith('http')) {
-      img = Image.network(url!, fit: BoxFit.cover, errorBuilder: (_, _, _) => fallback());
+      final alt = fallbackUrl;
+      img = network(
+        url!,
+        () => (alt != null && alt.startsWith('http') && alt != url) ? network(alt, fallback) : fallback(),
+      );
+    } else if (fallbackUrl != null && fallbackUrl!.startsWith('http')) {
+      img = network(fallbackUrl!, fallback);
     } else {
       img = fallback();
     }

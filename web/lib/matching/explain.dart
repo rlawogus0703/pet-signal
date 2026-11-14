@@ -44,7 +44,7 @@ List<ScoreItem> textItems(Candidate c) {
 
 String imageNote(Candidate c) => switch (c.score.imageStatus) {
       'no_user_photo' => '사진 미등록',
-      'fetch_failed' => '공고 사진 오류',
+      'fetch_failed' => '사진을 불러오지 못해 이미지는 빼고 계산',
       'no_notice_photo' => '공고 사진 없음',
       _ => '-',
     };

@@ -6,6 +6,7 @@ import '../widgets/common.dart';
 import 'auth_screen.dart';
 import 'candidates_screen.dart';
 import 'home_screen.dart';
+import 'nearby_screen.dart';
 import 'my_page_screen.dart';
 import 'notifications_screen.dart';
 import 'register_screen.dart';
@@ -19,6 +20,7 @@ class _NavItem {
 
 const _items = [
   _NavItem('홈', Icons.home_outlined, Icons.home_rounded),
+  _NavItem('가까운 공고', Icons.holiday_village_outlined, Icons.holiday_village_rounded),
   _NavItem('실종견 등록', Icons.add_circle_outline_rounded, Icons.add_circle_rounded),
   _NavItem('유사 후보', Icons.manage_search_rounded, Icons.manage_search_rounded),
   _NavItem('알림', Icons.notifications_none_rounded, Icons.notifications_rounded),
@@ -32,12 +34,14 @@ class AppShell extends StatelessWidget {
   Widget _page(AppState s) {
     final Widget page = switch (s.tab) {
       0 => const HomeScreen(),
-      1 => const RegisterScreen(),
-      2 => const CandidatesScreen(),
-      3 => const NotificationsScreen(),
+      1 => const NearbyScreen(),
+      2 => const RegisterScreen(),
+      3 => const CandidatesScreen(),
+      4 => const NotificationsScreen(),
       _ => const MyPageScreen(),
     };
-    if (s.tab != 0 && !s.loggedIn) return const AuthScreen(embedded: true);
+    // 홈·가까운 공고는 로그인 없이 볼 수 있어요. 등록·매칭은 로그인이 필요합니다.
+    if (s.tab > 1 && !s.loggedIn) return const AuthScreen(embedded: true);
     return page;
   }
 
@@ -232,7 +236,7 @@ class _TopBar extends StatelessWidget {
               tooltip: '내 계정',
               position: PopupMenuPosition.under,
               onSelected: (v) {
-                if (v == 'my') state.goTab(4);
+                if (v == 'my') state.goTab(5);
                 if (v == 'logout') state.logout();
               },
               itemBuilder: (_) => const [
@@ -258,7 +262,7 @@ class _TopBar extends StatelessWidget {
           else
             FilledButton(
               style: FilledButton.styleFrom(minimumSize: const Size(0, 40)),
-              onPressed: () => state.goTab(1),
+              onPressed: () => state.goTab(2),
               child: const Text('로그인'),
             ),
         ],

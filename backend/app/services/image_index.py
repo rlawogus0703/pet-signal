@@ -38,10 +38,26 @@ def notice_photo_source(n: NoticeRow) -> str | None:
 
 
 def notice_photo_bytes(n: NoticeRow, which: int = 1) -> bytes | None:
+    """공고 사진 바이트. 1번이 실패하면 popfile2 로 넘어가고, https/http 도 같이 시도합니다."""
     st = get_settings()
+    timeout = max(st.image_fetch_timeout, 12.0)
+    urls: list[str | None]
     if which == 2:
-        return image_embedder.fetch_bytes(n.photo_url2, timeout=st.image_fetch_timeout)
-    return image_embedder.fetch_bytes(notice_photo_source(n), timeout=st.image_fetch_timeout)
+        urls = [n.photo_url2]
+    else:
+        urls = []
+        src = notice_photo_source(n)
+        if src:
+            urls.append(src)
+        if n.photo_url and n.photo_url not in urls:
+            urls.append(n.photo_url)
+        if n.photo_url2 and n.photo_url2 not in urls:
+            urls.append(n.photo_url2)
+    for u in urls:
+        data = image_embedder.fetch_bytes(u, timeout=timeout)
+        if data and image_embedder.looks_like_image(data):
+            return data
+    return None
 
 
 def needs_embedding(n: NoticeRow, method: str) -> bool:

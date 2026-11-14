@@ -4,6 +4,7 @@ import '../state/app_state.dart';
 import '../state/demo.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
+import 'nearby_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -14,6 +15,8 @@ class HomeScreen extends StatelessWidget {
     final narrow = w < 760;
     return PageBody(
       children: [
+        const NearbyScreen(embedded: true),
+        const SizedBox(height: Gap.xxl),
         const _Hero(),
         const SizedBox(height: Gap.l),
         const _Stats(),
@@ -119,7 +122,7 @@ class _Hero extends StatelessWidget {
           runSpacing: 12,
           children: [
             FilledButton.icon(
-              onPressed: () => s.goTab(1),
+              onPressed: () => s.goTab(2),
               icon: const Icon(Icons.add_rounded),
               label: const Text('실종견 등록하기'),
             ),
