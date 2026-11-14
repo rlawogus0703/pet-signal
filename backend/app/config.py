@@ -53,15 +53,29 @@ class Settings(BaseSettings):
     )
     public_api_base: str = "https://apis.data.go.kr/1543061/abandonmentPublicService_v2"
     collect_interval_minutes: int = 60
-    collect_pages: int = 2  # 수집 1회당 페이지 수
-    collect_rows: int = 100  # 페이지당 공고 수 (최대 1000)
+    collect_pages: int = 20  # 상태별 최대 페이지 수 (안전장치, 1000건 × 20)
+    collect_rows: int = 1000  # 페이지당 공고 수 (최대 1000)
+    # 공고중(notice) 전부 + 공고가 끝났지만 아직 보호 중(protect)인 최근 N일 공고
+    collect_states: str = "notice,protect"
+    collect_protect_days: int = 90
+    # 사진 임베딩은 한 번에 다 하지 않고 수집 1회마다 조금씩 (무료 서버 메모리·시간 보호)
+    embed_batch_per_run: int = 1500
+    embed_chunk: int = 100
+    embed_time_budget_seconds: int = 1200
+    # 목록에서 빠진(입양·반환 등) 공고는 매칭에서 빼고, 오래되면 DB 에서 정리
+    stale_delete_days: int = 30
     collect_on_startup: bool = True  # 키가 있으면 서버 시작 때 1회 수집
     embed_images_on_collect: bool = True  # 수집하면서 공고 사진 임베딩까지 계산
     image_fetch_timeout: float = 8.0
     image_workers: int = 8
+    match_store_top: int = 200  # 실종견 1마리당 저장할 매칭 결과 수
     match_image_top_k: int = 40  # 매칭 때 사진 임베딩이 없으면 상위 K개만 즉석 계산
     enable_scheduler: bool = True
     cors_origins: str = DEFAULT_CORS_ORIGINS
+
+    @property
+    def collect_state_list(self) -> list[str]:
+        return [x.strip() for x in self.collect_states.split(",") if x.strip()]
 
     @property
     def sqlalchemy_database_url(self) -> str:

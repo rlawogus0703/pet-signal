@@ -11,14 +11,15 @@ import json
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import or_, select
+from sqlalchemy.orm import Session, defer
 
 from app.ai import image_embedder, text_embedder, text_similarity
 from app.ai.fusion import MODAL_WEIGHTS
 from app.config import get_settings
 from app.models.db_models import LostDogRow, MatchResultRow, NoticeRow, NotificationRow
 from app.services.image_index import embed_notices, ensure_dog_image_embedding, notice_embedding
+from app.services.notice_state import STALE_STATE
 from app.services.matcher import MatchScore, dumps_emb, loads_emb, score_pair
 
 
@@ -80,12 +81,25 @@ def detail_of(ms: MatchScore) -> dict:
     }
 
 
-def matchable_notices(db: Session) -> list[NoticeRow]:
-    """실제 공공 API 공고가 있으면 그것만, 없으면 예시(시드) 공고로 매칭 (샘플 데이터 모드)."""
-    real = db.scalars(select(NoticeRow).where(NoticeRow.source != "seed")).all()
+def matchable_notices(db: Session, *, light: bool = False) -> list[NoticeRow]:
+    """실제 공공 API 공고가 있으면 그것만, 없으면 예시(시드) 공고로 매칭 (샘플 데이터 모드).
+
+    원본 JSON(raw_json)은 매칭·둘러보기에 안 써서 불러오지 않습니다 (메모리 절약).
+    light=True(둘러보기)면 임베딩 JSON 도 빼고 불러옵니다.
+    """
+    heavy = [NoticeRow.raw_json]
+    if light:
+        heavy += [NoticeRow.text_embedding_json, NoticeRow.image_embedding_json]
+    base = select(NoticeRow).options(*[defer(c) for c in heavy])
+    real = db.scalars(
+        base.where(
+            NoticeRow.source != "seed",
+            or_(NoticeRow.process_state.is_(None), NoticeRow.process_state != STALE_STATE),
+        )
+    ).all()
     if real:
         return list(real)
-    return list(db.scalars(select(NoticeRow)).all())
+    return list(db.scalars(base).all())
 
 
 def rematch_lost_dog(db: Session, lost_dog_id: str) -> list[MatchResultRow]:
@@ -104,25 +118,27 @@ def rematch_lost_dog(db: Session, lost_dog_id: str) -> list[MatchResultRow]:
     dog_img = loads_emb(dog.image_embedding_json) if dog.image_embed_method == method else None
 
     # 1차: 모든 공고 점수 (이미 계산된 사진 임베딩만 사용)
-    scored = [(n, _score(dog, n, dog_text, dog_img, method)) for n in notices]
+    # notice_id 를 미리 꺼내 둡니다: 아래 사진 임베딩 커밋 뒤 수천 개 객체가 만료돼
+    # 건마다 DB 를 다시 읽는 일을 막기 위해서입니다.
+    scored = [(n.notice_id, n, _score(dog, n, dog_text, dog_img, method)) for n in notices]
+    scored.sort(key=lambda x: x[2].total, reverse=True)
 
     # 2차: 사용자 사진이 있으면, 상위 K개 중 사진 임베딩이 없는 공고만 즉석으로 받아서 다시 계산
     if dog_img is not None:
         k = get_settings().match_image_top_k
-        scored.sort(key=lambda x: x[1].total, reverse=True)
-        top = [n for n, _ in scored[:k]]
+        top = [n for _, n, _ in scored[:k]]
         embed_notices(db, top)
-        top_ids = {n.notice_id for n in top}
-        scored = [
-            (n, _score(dog, n, dog_text, dog_img, method) if n.notice_id in top_ids else ms)
-            for n, ms in scored
-        ]
+        scored[:k] = [(nid, n, _score(dog, n, dog_text, dog_img, method)) for nid, n, _ in scored[:k]]
+        scored.sort(key=lambda x: x[2].total, reverse=True)
+
+    # 공고가 수천 건이라 점수 상위 N개만 저장 (화면은 최대 100개까지 보여줌)
+    scored = scored[: max(1, get_settings().match_store_top)]
 
     results: list[MatchResultRow] = []
-    for n, ms in scored:
+    for nid, _n, ms in scored:
         row = MatchResultRow(
             lost_dog_id=lost_dog_id,
-            notice_id=n.notice_id,
+            notice_id=nid,
             score_breed=ms.breed,
             score_color=ms.color,
             score_distance=ms.distance,

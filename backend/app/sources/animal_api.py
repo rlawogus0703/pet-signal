@@ -7,7 +7,8 @@ https://www.data.go.kr/data/15098931/openapi.do
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+import time
+from datetime import datetime, timedelta, timezone
 
 import httpx
 
@@ -19,6 +20,7 @@ log = logging.getLogger(__name__)
 
 NOTICE_URL = "https://www.animal.go.kr/front/awtis/protection/protectionList.do"
 DOG_UPKIND = "417000"
+KST = timezone(timedelta(hours=9))
 
 
 def parse_ymd(raw) -> "datetime.date | None":
@@ -106,24 +108,12 @@ class AnimalProtectionSource(NoticeSource):
     def enabled(self) -> bool:
         return bool(self.service_key)
 
-    def fetch(self, *, pages: int = 1, rows: int = 100) -> tuple[list[NoticeRecord], dict]:
-        if not self.service_key:
-            raise RuntimeError("SERVICE_KEY not set")
+    def _get_page(self, client: httpx.Client, params: dict) -> tuple[list[dict], int]:
+        """한 페이지 요청 (일시 오류는 2번까지 다시 시도). 키는 에러 메시지에 남기지 않습니다."""
         url = f"{self.base}/abandonmentPublic_v2"
-        out: list[NoticeRecord] = []
-        total = 0
-        own = self.client is None
-        client = self.client or httpx.Client(timeout=30.0)
-        try:
-            for page in range(1, max(1, pages) + 1):
-                params = {
-                    "serviceKey": self.service_key,
-                    "_type": "json",
-                    "upkind": DOG_UPKIND,
-                    "state": "notice",
-                    "pageNo": page,
-                    "numOfRows": rows,
-                }
+        last: Exception | None = None
+        for attempt in range(3):
+            try:
                 resp = client.get(url, params=params)
                 resp.raise_for_status()
                 try:
@@ -135,13 +125,63 @@ class AnimalProtectionSource(NoticeSource):
                 items, total, code, msg = extract_items(payload)
                 if code and code not in ("00", "0"):
                     raise RuntimeError(f"공공 API 오류 {code}: {msg}")
-                for it in items:
-                    rec = parse_item(it)
-                    if rec:
-                        out.append(rec)
-                if len(items) < rows:
-                    break
+                return items, total
+            except (httpx.TimeoutException, httpx.TransportError, httpx.HTTPStatusError) as e:
+                last = RuntimeError(str(e).replace(self.service_key, "***"))
+                time.sleep(2 * (attempt + 1))
+        raise last or RuntimeError("공공 API 요청 실패")
+
+    def state_params(self, state: str) -> dict:
+        """상태별 조회 조건.
+
+        - notice(공고중): 기간 제한 없이 전부 (보통 1,300건 안팎)
+        - protect(공고가 끝났지만 아직 보호소에 있는 아이): 최근 N일 공고만
+          (오래된 장기 보호 공고까지 다 받으면 1만 건이 넘어 무료 서버에 부담)
+        """
+        p: dict = {"state": state}
+        if state == "protect":
+            st = get_settings()
+            today = datetime.now(KST).date()
+            p["bgnde"] = (today - timedelta(days=max(1, st.collect_protect_days))).strftime("%Y%m%d")
+            p["endde"] = today.strftime("%Y%m%d")
+        return p
+
+    def iter_pages(self, *, states: list[str] | None = None, rows: int = 1000, max_pages: int = 20):
+        """상태(공고중·보호중)별로 끝 페이지까지 받아 페이지 단위로 돌려줍니다 (메모리 절약).
+
+        yield (state, records, total_count, page_no)
+        """
+        if not self.service_key:
+            raise RuntimeError("SERVICE_KEY not set")
+        states = states or list(get_settings().collect_state_list)
+        rows = max(1, min(1000, rows))
+        own = self.client is None
+        client = self.client or httpx.Client(timeout=60.0)
+        try:
+            for state in states:
+                for page in range(1, max(1, max_pages) + 1):
+                    params = {
+                        "serviceKey": self.service_key,
+                        "_type": "json",
+                        "upkind": DOG_UPKIND,
+                        "pageNo": page,
+                        "numOfRows": rows,
+                        **self.state_params(state),
+                    }
+                    items, total = self._get_page(client, params)
+                    recs = [r for r in (parse_item(it) for it in items) if r]
+                    yield state, recs, total, page
+                    if len(items) < rows or page * rows >= total:
+                        break
         finally:
             if own:
                 client.close()
-        return out, {"source": self.name, "total_count": total}
+
+    def fetch(self, *, pages: int = 1, rows: int = 100) -> tuple[list[NoticeRecord], dict]:
+        """예전 방식(한 번에 목록으로). 새 수집기는 iter_pages 를 씁니다."""
+        out: list[NoticeRecord] = []
+        totals: dict = {}
+        for state, recs, total, _ in self.iter_pages(rows=rows, max_pages=pages):
+            out.extend(recs)
+            totals[state] = total
+        return out, {"source": self.name, "total_count": sum(totals.values()), "totals": totals}

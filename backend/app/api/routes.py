@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.auth_deps import get_optional_user
@@ -31,6 +31,7 @@ from app.config import get_settings
 from app.services.collector import collect_notices
 from app.services.image_index import notice_photo_bytes, save_dog_photo
 from app.services.matching_service import rematch_lost_dog
+from app.services.notice_state import STALE_STATE
 from app.services.notice_query import list_nearby
 from app.services.seed import seed_notices
 
@@ -292,8 +293,8 @@ def admin_seed(db: Session = Depends(get_db)):
 
 @router.post("/admin/collect")
 def admin_collect(
-    pages: int = Query(1, ge=1, le=20),
-    rows: int = Query(100, ge=1, le=1000),
+    pages: int | None = Query(None, ge=1, le=20, description="상태별 최대 페이지 (기본: 설정값)"),
+    rows: int | None = Query(None, ge=1, le=1000, description="페이지당 건수 (기본 1000)"),
     embed_images: bool = Query(True),
     db: Session = Depends(get_db),
 ):
@@ -414,11 +415,31 @@ def system_info(db: Session = Depends(get_db)):
     st = get_settings()
     counts = dict(db.execute(select(NoticeRow.source, func.count()).group_by(NoticeRow.source)).all())
     with_img = db.scalar(select(func.count()).where(NoticeRow.image_embedding_json.is_not(None))) or 0
+    stale = db.scalar(select(func.count()).where(NoticeRow.process_state == STALE_STATE)) or 0
+    active_q = select(func.count()).where(
+        NoticeRow.source != "seed",
+        or_(NoticeRow.process_state.is_(None), NoticeRow.process_state != STALE_STATE),
+    )
+    active = db.scalar(active_q) or 0
+    active_with_img = db.scalar(active_q.where(NoticeRow.image_embedding_json.is_not(None))) or 0
+    active_with_photo = db.scalar(
+        active_q.where(or_(NoticeRow.photo_url.is_not(None), NoticeRow.photo_url2.is_not(None)))
+    ) or 0
+    last_collect = db.scalar(select(func.max(NoticeRow.collected_at)))
     return {
         "mode": "api" if st.decoded_service_key else "sample",
         "service_key_configured": bool(st.decoded_service_key),
         "notices": {k or "seed": v for k, v in counts.items()},
         "notices_with_image_embedding": with_img,
+        "collection": {
+            "states": st.collect_state_list,
+            "protect_days": st.collect_protect_days,
+            "active_notices": active,
+            "active_with_photo": active_with_photo,
+            "active_with_image_embedding": active_with_img,
+            "stale_notices": stale,
+            "last_collected_at_utc": last_collect.isoformat() if last_collect else None,
+        },
         "pipeline": {
             "input": ["나이", "지역", "사진", "품종", "색상", "특징"],
             "data": ["실종견 DB", "공공데이터 API (구조동물 조회 v2)"],

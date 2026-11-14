@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -68,7 +69,9 @@ def needs_embedding(n: NoticeRow, method: str) -> bool:
     return bool(notice_photo_source(n))
 
 
-def embed_notices(db: Session, notices: list[NoticeRow], *, max_workers: int | None = None) -> dict:
+def embed_notices(
+    db: Session, notices: list[NoticeRow], *, max_workers: int | None = None, cache: bool = True
+) -> dict:
     """여러 공고 사진을 병렬로 받아 임베딩. 결과 요약을 돌려줍니다."""
     st = get_settings()
     method = image_embedder.current_method()
@@ -82,7 +85,7 @@ def embed_notices(db: Session, notices: list[NoticeRow], *, max_workers: int | N
     with httpx.Client(timeout=st.image_fetch_timeout, follow_redirects=True) as client:
         with ThreadPoolExecutor(max_workers=workers) as ex:
             datas = list(
-                ex.map(lambda s: image_embedder.fetch_bytes(s, timeout=st.image_fetch_timeout, client=client), srcs)
+                ex.map(lambda s: image_embedder.fetch_bytes(s, timeout=st.image_fetch_timeout, client=client, cache=cache), srcs)
             )
     for n, data in zip(todo, datas):
         emb, m = (image_embedder.embed_bytes(data) if data else (None, method))
@@ -96,6 +99,64 @@ def embed_notices(db: Session, notices: list[NoticeRow], *, max_workers: int | N
             n.image_status = "ok"
             stats["embedded"] += 1
     db.commit()
+    return stats
+
+
+def embed_pending(db: Session, *, limit: int | None = None, chunk: int | None = None,
+                  budget_seconds: float | None = None) -> dict:
+    """사진 임베딩이 아직 없는 공고만, 최신 공고부터 조금씩(chunk) 계산합니다.
+
+    무료 서버(메모리 512MB)에서 한 번에 수천 장을 받지 않도록 수집 1회당 최대 limit 장,
+    시간 예산(budget_seconds)을 넘기면 다음 수집 때 이어서 합니다.
+    """
+    from sqlalchemy import func, or_, select
+
+    from app.services.notice_state import STALE_STATE
+
+    st = get_settings()
+    limit = st.embed_batch_per_run if limit is None else limit
+    chunk = max(1, chunk or st.embed_chunk)
+    budget = st.embed_time_budget_seconds if budget_seconds is None else budget_seconds
+    method = image_embedder.current_method()
+    pending_q = (
+        select(NoticeRow.notice_id)
+        .where(
+            NoticeRow.source != "seed",
+            or_(NoticeRow.process_state.is_(None), NoticeRow.process_state != STALE_STATE),
+            or_(NoticeRow.photo_url.is_not(None), NoticeRow.photo_url2.is_not(None)),
+            or_(
+                NoticeRow.image_embedding_json.is_(None),
+                NoticeRow.image_embed_method.is_(None),
+                NoticeRow.image_embed_method != method,
+            ),
+            # 이미 같은 방식으로 실패한 사진은 다시 시도하지 않음
+            # (NULL 비교는 SQL 에서 참/거짓이 아니라서 is_(None) 을 따로 둡니다)
+            or_(
+                NoticeRow.image_status.is_(None),
+                NoticeRow.image_status != "fetch_failed",
+                NoticeRow.image_embed_method.is_(None),
+                NoticeRow.image_embed_method != method,
+            ),
+        )
+    )
+    ids = list(
+        db.scalars(
+            pending_q.order_by(NoticeRow.notice_start.desc(), NoticeRow.notice_id.desc()).limit(max(0, limit))
+        )
+    )
+    stats = {"requested": 0, "embedded": 0, "failed": 0, "method": method, "stopped_by_budget": False}
+    t0 = time.monotonic()
+    for i in range(0, len(ids), chunk):
+        if budget and time.monotonic() - t0 > budget:
+            stats["stopped_by_budget"] = True
+            break
+        rows = list(db.scalars(select(NoticeRow).where(NoticeRow.notice_id.in_(ids[i : i + chunk]))))
+        s = embed_notices(db, rows, cache=False)
+        for k in ("requested", "embedded", "failed"):
+            stats[k] += s[k]
+        db.expunge_all()
+    stats["remaining"] = db.scalar(select(func.count()).select_from(pending_q.subquery())) or 0
+    stats["seconds"] = round(time.monotonic() - t0, 1)
     return stats
 
 

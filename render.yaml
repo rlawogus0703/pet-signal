@@ -22,7 +22,8 @@ services:
         value: "60"
       - key: COLLECT_ON_STARTUP
         value: "true"
-      - key: COLLECT_PAGES
-        value: "1"
-      - key: COLLECT_ROWS
-        value: "50"
+      # 전국 공고중 전부 + 보호중 최근 90일 (약 6,000건), 1000건씩 페이지로 저장
+      - key: COLLECT_STATES
+        value: "notice,protect"
+      - key: COLLECT_PROTECT_DAYS
+        value: "90"

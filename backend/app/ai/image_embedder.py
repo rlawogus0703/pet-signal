@@ -200,7 +200,9 @@ def cache_path_for(url: str) -> Path:
     return CACHE_DIR / (hashlib.sha1(url.encode("utf-8")).hexdigest() + ".img")
 
 
-def fetch_bytes(url: str | None, *, timeout: float = 8.0, client: httpx.Client | None = None) -> bytes | None:
+def fetch_bytes(
+    url: str | None, *, timeout: float = 8.0, client: httpx.Client | None = None, cache: bool = True
+) -> bytes | None:
     """URL 또는 로컬 경로의 사진 바이트. 실패하면 None (예외를 밖으로 던지지 않음)."""
     if not url:
         return None
@@ -231,8 +233,9 @@ def fetch_bytes(url: str | None, *, timeout: float = 8.0, client: httpx.Client |
                 continue
             if not looks_like_image(r.content):
                 continue
-            CACHE_DIR.mkdir(parents=True, exist_ok=True)
-            cp.write_bytes(r.content)
+            if cache:  # 대량 임베딩 때는 디스크에 쌓지 않음 (웹 사진 프록시만 캐시)
+                CACHE_DIR.mkdir(parents=True, exist_ok=True)
+                cp.write_bytes(r.content)
             return r.content
         except Exception as e:
             log.debug("image fetch failed %s: %s", u, e)

@@ -190,12 +190,18 @@ python -m scripts.collect_once --rows 20
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-- 키가 있으면 시작할 때 공고(기본 2페이지 × 100건)를 백그라운드로 수집하고 사진 임베딩까지 계산, 이후 60분마다 다시 수집합니다.
+- 키가 있으면 시작할 때 **전국 보호 중인 강아지 공고 전체**를 백그라운드로 수집하고, 이후 60분마다 다시 수집합니다.
+  - 공고중(`state=notice`) 공고는 전부 (2026년 11월 기준 약 1,300건)
+  - 공고 기간이 끝났지만 아직 보호소에 있는(`state=protect`) 공고는 최근 90일치 (약 5,000건)
+  - 합계 약 6,200건. 1000건씩 페이지로 받아 바로 저장해서 무료 서버(메모리 512MB)에서도 돌아갑니다.
+  - 다음 수집 목록에서 빠진 공고(입양·반환 등)는 `목록제외`로 바꿔 매칭·둘러보기에서 빼고, 30일 뒤 정리합니다.
+  - 사진 임베딩은 한 번에 다 하지 않고 수집할 때마다 최신 공고부터 최대 1,500장씩 이어서 계산합니다.
 - 실제 공고가 들어오면 매칭은 실제 공고로만 하고, 키가 없으면 예시 공고 16건(샘플 데이터 모드)으로 동작합니다.
 - 상태 확인: http://127.0.0.1:8000/api/v1/system (모드, 공고 수, 사진 임베딩 수, 텍스트/이미지 방식, 가중치)
 - API 문서: http://127.0.0.1:8000/docs
-- 더 많이 수집: http://127.0.0.1:8000/docs 에서 `POST /api/v1/admin/collect` (pages, rows 지정)
-- 수집량 조절은 `.env` 의 `COLLECT_PAGES`, `COLLECT_ROWS`, `COLLECT_INTERVAL_MINUTES`
+- 바로 수집: http://127.0.0.1:8000/docs 에서 `POST /api/v1/admin/collect`
+- 수집량 조절은 `.env` 의 `COLLECT_STATES`(기본 `notice,protect`), `COLLECT_PROTECT_DAYS`(기본 90), `EMBED_BATCH_PER_RUN`(기본 1500), `COLLECT_INTERVAL_MINUTES`
+- 수집 현황(보호 중 공고 수, 사진 임베딩 수)은 `GET /api/v1/system` 의 `collection` 에서 볼 수 있습니다.
 
 ### 5) 웹 연결
 

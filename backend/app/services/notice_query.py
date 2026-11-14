@@ -75,7 +75,7 @@ def list_nearby(
     page_size: int = 20,
 ) -> dict[str, Any]:
     origin_lat, origin_lng, origin_label = resolve_origin(lat, lng, region)
-    notices = matchable_notices(db)
+    notices = matchable_notices(db, light=True)
     cutoff = _today() - timedelta(days=days) if days and days > 0 else None
 
     rows: list[tuple[NoticeRow, float | None]] = []

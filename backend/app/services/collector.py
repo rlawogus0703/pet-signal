@@ -9,14 +9,16 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import delete, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.ai import text_embedder, text_similarity
 from app.config import get_settings
-from app.models.db_models import NoticeRow
-from app.services.image_index import embed_notices
+from app.models.db_models import MatchResultRow, NoticeRow
+from app.services.image_index import embed_pending
+from app.services.notice_state import STALE_STATE
 from app.services.matcher import dumps_emb
 from app.services.normalizer import norm_breed, norm_color
 from app.sources.base import NoticeRecord, NoticeSource
@@ -85,6 +87,69 @@ def upsert_record(db: Session, rec: NoticeRecord) -> bool:
     return True
 
 
+def _warm(db: Session, ids: list[str]) -> None:
+    """이미 있는 공고를 한 번에 불러와 db.get 이 건마다 DB 를 다시 조회하지 않게 합니다."""
+    for i in range(0, len(ids), 500):
+        list(db.scalars(select(NoticeRow).where(NoticeRow.notice_id.in_(ids[i : i + 500]))))
+
+
+def _collect_paged(db: Session, src, *, rows: int, pages: int, result: dict) -> dict:
+    """페이지(최대 1000건)마다 저장·커밋하고 메모리를 비웁니다."""
+    info: dict = {"source": src.name, "ok": True, "fetched": 0, "new": 0, "totals": {}, "complete": False}
+    seen: dict[str, int] = {}
+    try:
+        for state, recs, total, _page in src.iter_pages(rows=rows, max_pages=pages):
+            info["totals"][state] = total
+            _warm(db, list(dict.fromkeys(r.notice_id for r in recs)))
+            for rec in recs:
+                if upsert_record(db, rec):
+                    info["new"] += 1
+            db.commit()
+            db.expunge_all()
+            seen[state] = seen.get(state, 0) + len(recs)
+            info["fetched"] += len(recs)
+            result["with_photo"] = result.get("with_photo", 0) + sum(1 for r in recs if r.photo_url)
+            result["geocoded"] = result.get("geocoded", 0) + sum(1 for r in recs if r.found_lat is not None)
+        # 상태마다 거의 전부(98%↑) 받았을 때만 '목록에서 빠진 공고' 정리를 믿고 진행
+        info["complete"] = bool(info["totals"]) and all(
+            seen.get(s, 0) >= int(t * 0.98) for s, t in info["totals"].items()
+        )
+    except Exception as e:
+        db.rollback()
+        log.warning("source %s failed: %s", src.name, e)
+        info.update(ok=info["fetched"] > 0, error=str(e))
+    info["total_count"] = sum(info["totals"].values())
+    return info
+
+
+def mark_stale(db: Session, source: str, run_start: datetime) -> dict:
+    """이번 수집에서 안 보인 공고(입양·반환·안락사 등으로 목록에서 빠짐)는 매칭·둘러보기에서 제외."""
+    st = get_settings()
+    r = db.execute(
+        update(NoticeRow)
+        .where(
+            NoticeRow.source == source,
+            NoticeRow.collected_at < run_start,
+            or_(NoticeRow.process_state.is_(None), NoticeRow.process_state != STALE_STATE),
+        )
+        .values(process_state=STALE_STATE)
+    )
+    marked = r.rowcount or 0
+    cutoff = _now() - timedelta(days=max(1, st.stale_delete_days))
+    d = db.execute(
+        delete(NoticeRow)
+        .where(
+            NoticeRow.source == source,
+            NoticeRow.process_state == STALE_STATE,
+            NoticeRow.collected_at < cutoff,
+            NoticeRow.notice_id.not_in(select(MatchResultRow.notice_id)),
+        )
+        .execution_options(synchronize_session=False)
+    )
+    db.commit()
+    return {"marked_stale": marked, "deleted_old": d.rowcount or 0}
+
+
 def collect_notices(
     db: Session,
     *,
@@ -106,9 +171,17 @@ def collect_notices(
     if not active:
         return {"ok": False, "error": "SERVICE_KEY not set", "upserted": 0, "fetched": 0}
 
+    run_start = _now()
     result: dict = {"ok": True, "upserted": 0, "fetched": 0, "sources": []}
-    touched: list[str] = []
     for src in active:
+        if hasattr(src, "iter_pages"):
+            info = _collect_paged(db, src, rows=rows, pages=pages, result=result)
+            if info.get("complete"):
+                info.update(mark_stale(db, src.name, run_start))
+            result["fetched"] += info["fetched"]
+            result["upserted"] += info["new"]
+            result["sources"].append(info)
+            continue
         try:
             records, meta = src.fetch(pages=pages, rows=rows)
         except Exception as e:
@@ -119,23 +192,22 @@ def collect_notices(
         for rec in records:
             if upsert_record(db, rec):
                 new += 1
-            touched.append(rec.notice_id)
         db.commit()
         result["fetched"] += len(records)
         result["upserted"] += new
         result["sources"].append({"source": src.name, "ok": True, "fetched": len(records), "new": new, **meta})
         result["with_photo"] = result.get("with_photo", 0) + sum(1 for r in records if r.photo_url)
         result["geocoded"] = result.get("geocoded", 0) + sum(1 for r in records if r.found_lat is not None)
+        del records
 
     if not any(s.get("ok") for s in result["sources"]):
         result["ok"] = False
         result["error"] = "; ".join(s.get("error", "") for s in result["sources"])
-    if embed_images and touched:
-        notices = [db.get(NoticeRow, nid) for nid in dict.fromkeys(touched)]
-        result["images"] = embed_notices(db, [n for n in notices if n is not None])
     # 실제 공고가 들어오면 예시(시드) 데이터는 매칭에서 빼고 DB 에서도 정리
     if result.get("ok") and result.get("fetched"):
         from app.services.seed import remove_seed_notices
 
         result["seed_removed"] = remove_seed_notices(db)
+    if embed_images:
+        result["images"] = embed_pending(db)
     return result
