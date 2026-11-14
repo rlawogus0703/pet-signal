@@ -99,19 +99,6 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 데모 계정으로 바로 시작 (Mock: 미리 생성 / API: 없으면 가입)
-  Future<void> demoLogin() async {
-    const email = MockAuthRepository.demoEmail;
-    const pw = MockAuthRepository.demoPassword;
-    try {
-      await auth.login(email: email, password: pw);
-    } catch (_) {
-      await auth.signup(email: email, password: pw, name: '김재현');
-    }
-    await refreshUnread();
-    notifyListeners();
-  }
-
   Future<void> logout() async {
     await auth.logout();
     tab = 0;

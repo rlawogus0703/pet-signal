@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../state/app_state.dart';
-import '../state/demo.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
 import '../widgets/common.dart';
@@ -89,9 +88,9 @@ class MyPageScreen extends StatelessWidget {
             child: StateView(
               icon: Icons.pets_rounded,
               title: '등록한 실종견이 없어요',
-              message: '논문 예시(흰색 말티즈, 오산시)로 바로 체험해 볼 수 있어요.',
-              actionLabel: '예시로 체험하기',
-              onAction: () => startDemo(context),
+              message: '실종견을 등록하면 여기에서 볼 수 있어요.',
+              actionLabel: '실종견 등록하기',
+              onAction: () => s.goTab(2),
             ),
           )
         else

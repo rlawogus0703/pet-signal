@@ -215,24 +215,11 @@ class _AuthScreenState extends State<AuthScreen> {
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
                   : Text(_signup ? '가입하고 시작하기' : '로그인'),
             ),
-            const SizedBox(height: 12),
-            Row(children: const [
-              Expanded(child: Divider()),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 10),
-                child: Text('또는', style: TextStyle(color: AppColors.subtext, fontSize: 12.5)),
-              ),
-              Expanded(child: Divider()),
-            ]),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _busy ? null : () => _run(s.demoLogin),
-              icon: const Icon(Icons.bolt_rounded, color: AppColors.coral),
-              label: const Text('데모 계정으로 바로 시작'),
-            ),
             const SizedBox(height: 10),
             Text(
-              s.useApi ? '현재 API 서버(${s.apiBaseUrl})에 연결돼요.' : 'Mock 모드: 데모 계정 demo@petsignal.kr / demo1234',
+              s.useApi
+                  ? '현재 API 서버(${s.apiBaseUrl})에 연결돼요. 이메일로 가입하거나 로그인해 주세요.'
+                  : 'Mock 모드: 이 브라우저에서 이메일로 가입·로그인할 수 있어요.',
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 12, color: AppColors.subtext),
             ),

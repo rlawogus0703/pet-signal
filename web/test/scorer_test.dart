@@ -2,19 +2,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pet_signal_web/data/mock_data.dart';
 import 'package:pet_signal_web/matching/scorer.dart';
 import 'package:pet_signal_web/models/lost_dog.dart';
-import 'package:pet_signal_web/state/demo.dart';
+import 'package:pet_signal_web/state/example_dog.dart';
 
 void main() {
   final dog = LostDog(
     id: 'd',
-    breed: DemoDog.breed,
-    color: DemoDog.color,
-    features: DemoDog.features,
-    age: DemoDog.age,
-    lostDate: DemoDog.lostDate,
-    lostLat: DemoDog.lat,
-    lostLng: DemoDog.lng,
-    lostAddress: DemoDog.address,
+    breed: ExampleDog.breed,
+    color: ExampleDog.color,
+    features: ExampleDog.features,
+    age: ExampleDog.age,
+    lostDate: ExampleDog.lostDate,
+    lostLat: ExampleDog.lat,
+    lostLng: ExampleDog.lng,
+    lostAddress: ExampleDog.address,
     createdAt: DateTime(2026, 11, 1),
   );
 

@@ -3,26 +3,11 @@ import 'package:uuid/uuid.dart';
 import '../models/user.dart';
 import 'auth_repository.dart';
 
-/// Mock 모드: 메모리에 회원 저장 (백엔드 없이 시연)
+/// Mock 모드: 메모리에 회원 저장 (백엔드 없이 로컬에서 가입·로그인)
 class MockAuthRepository implements AuthRepository {
   final _uuid = const Uuid();
   final Map<String, _Stored> _usersByEmail = {};
   AuthSession? _session;
-
-  /// 시연용 데모 계정
-  static const demoEmail = 'demo@petsignal.kr';
-  static const demoPassword = 'demo1234';
-
-  MockAuthRepository() {
-    final demo = AppUser(
-      id: 'demo-user',
-      email: demoEmail,
-      name: '김재현',
-      phone: '010-0000-0000',
-      createdAt: DateTime(2026, 11, 1),
-    );
-    _usersByEmail[demoEmail] = _Stored(user: demo, password: demoPassword);
-  }
 
   @override
   AuthSession? get current => _session;

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../state/app_state.dart';
-import '../state/demo.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 import 'nearby_screen.dart';
@@ -125,15 +124,6 @@ class _Hero extends StatelessWidget {
               onPressed: () => s.goTab(2),
               icon: const Icon(Icons.add_rounded),
               label: const Text('실종견 등록하기'),
-            ),
-            OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                side: const BorderSide(color: Colors.white38, width: 1.4),
-              ),
-              onPressed: () => startDemo(context),
-              icon: const Icon(Icons.play_circle_outline_rounded),
-              label: const Text('예시로 바로 체험하기'),
             ),
           ],
         ),

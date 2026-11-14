@@ -5,7 +5,6 @@ import 'package:image_picker/image_picker.dart';
 
 import '../data/options.dart';
 import '../state/app_state.dart';
-import '../state/demo.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
 import '../widgets/common.dart';
@@ -58,23 +57,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _sido = r.sido;
       _lat.text = r.lat.toStringAsFixed(4);
       _lng.text = r.lng.toStringAsFixed(4);
-    });
-  }
-
-  void _fillExample() {
-    setState(() {
-      _name.text = DemoDog.name;
-      _breed.text = DemoDog.breed;
-      _color.text = DemoDog.color;
-      _age.text = DemoDog.age;
-      _features.text = DemoDog.features;
-      _lostDate = DemoDog.lostDate;
-      _photo = null;
-      _photoAsset = DemoDog.photoAsset;
-      _setRegion(regions.first);
-      _address.text = '양산동 한신대학교 인근';
-      _lat.text = DemoDog.lat.toString();
-      _lng.text = DemoDog.lng.toString();
     });
   }
 
@@ -173,11 +155,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ],
               ),
             ),
-            TextButton.icon(
-              onPressed: _fillExample,
-              icon: const Icon(Icons.auto_fix_high_rounded),
-              label: const Text('논문 예시로 채우기'),
-            ),
           ],
         ),
         const SizedBox(height: Gap.l),
@@ -219,7 +196,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       }),
       onSample: () => setState(() {
         _photo = null;
-        _photoAsset = DemoDog.photoAsset;
+        _photoAsset = 'assets/dogs/my_maltese.jpg';
       }),
     );
     final fields = Column(

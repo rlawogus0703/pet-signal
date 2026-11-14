@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'screens/detail_screen.dart';
 import 'screens/shell.dart';
-import 'state/demo.dart';
 import 'state/app_state.dart';
 import 'theme/app_theme.dart';
 
@@ -31,11 +29,8 @@ class PetSignalApp extends StatelessWidget {
   }
 }
 
-/// URL 파라미터로 바로 시연 화면 열기
-///   ?demo=1            데모 로그인 + 예시 실종견 등록 → 유사 후보
-///   ?demo=1&tab=4      (0 홈, 1 가까운 공고, 2 등록, 3 후보, 4 알림, 5 마이페이지)
-///   ?demo=1&detail=1   1위 후보 상세 화면
-///   ?login=1&tab=2     데모 로그인 후 등록 화면
+/// URL 파라미터: ?tab=1 처럼 탭만 엽니다 (0 홈, 1 가까운 공고, 2 등록…).
+/// 로그인·회원가입은 직접 해야 하며, 가까운 공고는 로그인 없이 볼 수 있어요.
 class _Bootstrap extends StatefulWidget {
   const _Bootstrap({required this.child});
   final Widget child;
@@ -51,27 +46,11 @@ class _BootstrapState extends State<_Bootstrap> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _run());
   }
 
-  Future<void> _run() async {
+  void _run() {
     final q = Uri.base.queryParameters;
     final s = AppScope.read(context);
-    try {
-      if (q['demo'] == '1') {
-        await startDemo(context);
-      } else if (q['login'] == '1') {
-        await s.demoLogin();
-      }
-      final tab = int.tryParse(q['tab'] ?? '');
-      if (tab != null) s.goTab(tab.clamp(0, 5));
-      final d = s.selectedDog;
-      if (q['detail'] != null && d != null && mounted) {
-        final list = await s.repo.getCandidates(d.dog.id);
-        final i = ((int.tryParse(q['detail']!) ?? 1) - 1).clamp(0, list.length - 1);
-        if (!mounted || list.isEmpty) return;
-        Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => DetailScreen(myDog: d, noticeId: list[i].noticeId, preview: list[i]),
-        ));
-      }
-    } catch (_) {}
+    final tab = int.tryParse(q['tab'] ?? '');
+    if (tab != null) s.goTab(tab.clamp(0, 5));
   }
 
   @override
