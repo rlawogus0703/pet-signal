@@ -30,6 +30,7 @@ class PetSignalApp extends StatelessWidget {
 }
 
 /// URL 파라미터: ?tab=1 처럼 탭만 엽니다 (0 홈, 1 가까운 공고, 2 등록…).
+/// ?about=1 이면 서비스 소개 화면을 엽니다.
 /// 로그인·회원가입은 직접 해야 하며, 가까운 공고는 로그인 없이 볼 수 있어요.
 class _Bootstrap extends StatefulWidget {
   const _Bootstrap({required this.child});
@@ -51,6 +52,8 @@ class _BootstrapState extends State<_Bootstrap> {
     final s = AppScope.read(context);
     final tab = int.tryParse(q['tab'] ?? '');
     if (tab != null) s.goTab(tab.clamp(0, 5));
+    final about = (q['about'] ?? '').toLowerCase();
+    if (about == '1' || about == 'true') s.openAbout();
   }
 
   @override

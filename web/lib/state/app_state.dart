@@ -42,6 +42,7 @@ class AppState extends ChangeNotifier {
   late PetSignalRepository repo;
 
   int tab = 0;
+  bool showAbout = false;
   int unread = 0;
   String? selectedDogId;
   final Map<String, List<MyDog>> _dogs = {};
@@ -85,6 +86,17 @@ class AppState extends ChangeNotifier {
 
   void goTab(int i) {
     tab = i;
+    showAbout = false;
+    notifyListeners();
+  }
+
+  void openAbout() {
+    showAbout = true;
+    notifyListeners();
+  }
+
+  void closeAbout() {
+    showAbout = false;
     notifyListeners();
   }
 
@@ -102,6 +114,7 @@ class AppState extends ChangeNotifier {
   Future<void> logout() async {
     await auth.logout();
     tab = 0;
+    showAbout = false;
     unread = 0;
     selectedDogId = null;
     notifyListeners();

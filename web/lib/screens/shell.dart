@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
+import 'about_screen.dart';
 import 'auth_screen.dart';
 import 'candidates_screen.dart';
 import 'home_screen.dart';
@@ -32,6 +33,8 @@ class AppShell extends StatelessWidget {
   const AppShell({super.key});
 
   Widget _page(AppState s) {
+    // 서비스 소개는 로그인 없이 볼 수 있어요.
+    if (s.showAbout) return const AboutScreen();
     final Widget page = switch (s.tab) {
       0 => const HomeScreen(),
       1 => const NearbyScreen(),
@@ -63,7 +66,7 @@ class AppShell extends StatelessWidget {
           child: child,
         ),
       ),
-      child: KeyedSubtree(key: ValueKey('${s.tab}-${s.loggedIn}-${s.useApi}'), child: _page(s)),
+      child: KeyedSubtree(key: ValueKey('${s.tab}-${s.loggedIn}-${s.useApi}-${s.showAbout}'), child: _page(s)),
     );
 
     if (wide) {
@@ -127,29 +130,53 @@ class _SideNav extends StatelessWidget {
           for (var i = 0; i < _items.length; i++) ...[
             _SideNavTile(
               item: _items[i],
-              selected: state.tab == i,
+              selected: !state.showAbout && state.tab == i,
               badge: i == 3 ? state.unread : 0,
               onTap: () => state.goTab(i),
             ),
             const SizedBox(height: 4),
           ],
           const Spacer(),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.bg,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('2026 한국디지털콘텐츠학회', style: TextStyle(fontSize: 11.5, color: AppColors.subtext)),
-                SizedBox(height: 2),
-                Text('추계종합학술대회 · 10조', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
-              ],
-            ),
-          ),
+          _AboutNavTile(selected: state.showAbout, onTap: state.openAbout),
         ],
+      ),
+    );
+  }
+}
+
+class _AboutNavTile extends StatelessWidget {
+  const _AboutNavTile({required this.selected, required this.onTap});
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? AppColors.coralSoft : AppColors.bg,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Icon(selected ? Icons.info_rounded : Icons.info_outline_rounded,
+                  size: 20, color: selected ? AppColors.coral : AppColors.navy),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('서비스 소개', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                    SizedBox(height: 2),
+                    Text('매칭 방식 · 학회 소개', style: TextStyle(fontSize: 11.5, color: AppColors.subtext)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -227,8 +254,30 @@ class _TopBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          if (!wide) const BrandLogo(size: 30) else Text(_items[state.tab].label, style: Theme.of(context).textTheme.titleLarge),
+          if (!wide) ...[
+            if (state.showAbout)
+              IconButton(
+                tooltip: '뒤로',
+                onPressed: state.closeAbout,
+                icon: const Icon(Icons.arrow_back_rounded),
+              )
+            else
+              const BrandLogo(size: 30),
+            if (state.showAbout) ...[
+              const SizedBox(width: 4),
+              Text('서비스 소개', style: Theme.of(context).textTheme.titleMedium),
+            ],
+          ] else
+            Text(state.showAbout ? '서비스 소개' : _items[state.tab].label, style: Theme.of(context).textTheme.titleLarge),
           const Spacer(),
+          if (!state.showAbout) ...[
+            IconButton(
+              tooltip: '서비스 소개',
+              onPressed: state.openAbout,
+              icon: const Icon(Icons.info_outline_rounded),
+            ),
+            const SizedBox(width: 4),
+          ],
           _ModeButton(state: state, compact: !wide),
           const SizedBox(width: 10),
           if (state.loggedIn)
