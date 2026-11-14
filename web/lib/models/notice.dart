@@ -14,6 +14,10 @@ class Notice {
   final String shelterName;
   final String shelterPhone;
   final String noticeUrl;
+  final String shelterAddress;
+  final DateTime? noticeStart;
+  final DateTime? noticeEnd;
+  final String weight;
 
   const Notice({
     required this.noticeId,
@@ -30,5 +34,9 @@ class Notice {
     required this.shelterName,
     required this.shelterPhone,
     required this.noticeUrl,
+    this.shelterAddress = '',
+    this.noticeStart,
+    this.noticeEnd,
+    this.weight = '',
   });
 }

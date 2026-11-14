@@ -1,5 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:uuid/uuid.dart';
 
+import '../matching/image_features.dart';
 import '../matching/scorer.dart';
 import '../models/app_notification.dart';
 import '../models/candidate.dart';
@@ -7,16 +10,36 @@ import '../models/lost_dog.dart';
 import 'mock_data.dart';
 import 'repository.dart';
 
-/// 오프라인 시연용: 예시 공고 + Dart 규칙 스코어러
+/// 오프라인 시연용: 예시 공고 + Dart 멀티모달 스코어러 (서버와 같은 공식)
+/// 사진 유사도는 번들 사진(assets/dogs)과 업로드 사진의 경량 특징으로 계산합니다.
 class MockRepository implements PetSignalRepository {
   final _uuid = const Uuid();
   final _scorer = RuleScorer();
   final Map<String, LostDog> _dogs = {};
   final Map<String, List<AppNotification>> _notifs = {};
+  final Map<String, List<double>?> _dogFeatures = {};
+
+  Future<Map<String, double?>?> _imageScores(String dogId) async {
+    final f = _dogFeatures[dogId];
+    if (f == null) return null;
+    final out = <String, double?>{};
+    for (final n in exampleNotices()) {
+      final asset = noticePhotoAssets[n.noticeId];
+      final nf = asset == null ? null : await ImageFeatures.fromAsset(asset);
+      out[n.noticeId] = nf == null ? null : ImageFeatures.similarity(f, nf);
+    }
+    return out;
+  }
+
+  Future<List<Candidate>> _rank(LostDog dog) async {
+    final scores = await _imageScores(dog.id);
+    return _scorer.rank(dog, exampleNotices(), imageScores: scores, hasUserPhoto: scores != null);
+  }
 
   @override
   Future<LostDog> registerLostDog({
     String? photoUrl,
+    Uint8List? photoBytes,
     required String breed,
     required String color,
     required String features,
@@ -40,10 +63,11 @@ class MockRepository implements PetSignalRepository {
       createdAt: DateTime.now(),
     );
     _dogs[dog.id] = dog;
+    if (photoBytes != null) _dogFeatures[dog.id] = await ImageFeatures.fromBytes(photoBytes);
 
     // 시연 연출: 매칭 계산 시간
     await Future<void>.delayed(const Duration(milliseconds: 700));
-    final ranked = _scorer.rank(dog, exampleNotices());
+    final ranked = await _rank(dog);
     final now = DateTime.now();
     _notifs[dog.id] = [
       for (var i = 0; i < ranked.length && i < 3; i++)
@@ -72,7 +96,7 @@ class MockRepository implements PetSignalRepository {
   Future<List<Candidate>> getCandidates(String lostDogId, {int limit = 20}) async {
     await Future<void>.delayed(const Duration(milliseconds: 450));
     final dog = await getLostDog(lostDogId);
-    final ranked = _scorer.rank(dog, exampleNotices());
+    final ranked = await _rank(dog);
     return ranked.take(limit).toList();
   }
 

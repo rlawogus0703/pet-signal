@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 
 import '../data/api_auth_repository.dart';
 import '../data/api_repository.dart';
@@ -124,7 +125,15 @@ class AppState extends ChangeNotifier {
     required double lostLng,
     required String lostAddress,
   }) async {
+    // 사진 바이트 (예시 사진이면 번들에서 읽기) → 이미지 유사도 계산에 사용
+    var bytes = photoBytes;
+    if (bytes == null && photoAsset != null) {
+      try {
+        bytes = (await rootBundle.load(photoAsset)).buffer.asUint8List();
+      } catch (_) {}
+    }
     final dog = await repo.registerLostDog(
+      photoBytes: bytes,
       breed: breed,
       color: color,
       features: features,

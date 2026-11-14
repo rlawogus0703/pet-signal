@@ -12,3 +12,5 @@ __pycache__/
 .pytest_cache/
 *.db
 .env
+backend/data/image_cache/
+backend/data/uploads/

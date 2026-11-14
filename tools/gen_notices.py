@@ -29,10 +29,26 @@ N = [
  ("N20261029016","서울-관악-2026-00733","웰시코기","황색","3살","중형, 꼬리 없음, 다리 짧음, 노란 하네스","2026-10-29",37.4784,126.9516,"서울특별시 관악구 봉천동","관악구 동물보호센터","02-879-6862","corgi"),
 ]
 
+from datetime import date, timedelta
+
+
+def care_addr(addr):
+    # 예시 보호소 주소 (시·군·구까지만 실제, 나머지는 예시)
+    return " ".join(addr.split()[:2]) + " (예시 보호소 주소)"
+
+
+def period(d):
+    s = date.fromisoformat(d)
+    return s.isoformat(), (s + timedelta(days=10)).isoformat()
+
+
 seed = []
 for (nid,no,breed,color,age,feat,d,lat,lng,addr,sh,ph,photo) in N:
-    seed.append(dict(notice_id=nid,notice_no=no,photo_url=None,breed=breed,color=color,age=age,features=feat,
-        found_date=d,found_lat=lat,found_lng=lng,found_address=addr,shelter_name=sh,shelter_phone=ph,notice_url=URL))
+    ns, ne = period(d)
+    seed.append(dict(notice_id=nid,notice_no=no,photo_url=None,photo_local=f"web/assets/dogs/{photo}.jpg",
+        breed=breed,color=color,age=age,features=feat,
+        found_date=d,found_lat=lat,found_lng=lng,found_address=addr,shelter_name=sh,shelter_phone=ph,
+        care_addr=care_addr(addr),notice_start=ns,notice_end=ne,notice_url=URL))
 (ROOT/"backend/data/seed_notices.json").write_text(json.dumps(seed,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 
 def q(s): return "'" + s.replace("'", "\\'") + "'"
@@ -46,9 +62,13 @@ for n in N: lines.append(f"  {q(n[0])}: {q('assets/dogs/'+n[12]+'.jpg')},")
 lines += ["};","","List<Notice> exampleNotices() => [",]
 for (nid,no,breed,color,age,feat,d,lat,lng,addr,sh,ph,photo) in N:
     y,m,dd = map(int,d.split('-'))
+    ns, ne = period(d)
+    ey,em,ed = map(int,ne.split('-'))
     lines += ["      Notice(",f"        noticeId: {q(nid)},",f"        noticeNo: {q(no)},",f"        breed: {q(breed)},",f"        color: {q(color)},",
       f"        age: {q(age)},",f"        features: {q(feat)},",f"        foundDate: DateTime({y}, {m}, {dd}),",f"        foundLat: {lat},",f"        foundLng: {lng},",
-      f"        foundAddress: {q(addr)},",f"        shelterName: {q(sh)},",f"        shelterPhone: {q(ph)},","        noticeUrl: _url,","      ),"]
+      f"        foundAddress: {q(addr)},",f"        shelterName: {q(sh)},",f"        shelterPhone: {q(ph)},",f"        shelterAddress: {q(care_addr(addr))},",
+      f"        noticeStart: DateTime({y}, {m}, {dd}),",f"        noticeEnd: DateTime({ey}, {em}, {ed}),",
+      "        noticeUrl: _url,","      ),"]
 lines += ["    ];",""]
 (ROOT/"web/lib/data/mock_data.dart").write_text("\n".join(lines),encoding="utf-8")
 print("ok", len(N))

@@ -70,17 +70,7 @@ class _DetailScreenState extends State<DetailScreen> {
 
   Widget _content(Candidate c) {
     final wide = MediaQuery.sizeOf(context).width >= 1000;
-    final d = widget.myDog;
-    final photo = AspectRatio(
-      aspectRatio: wide ? 1 : 4 / 3,
-      child: DogPhoto(
-        url: c.photoUrl,
-        noticeId: c.noticeId,
-        breed: c.breed,
-        radius: 24,
-        heroTag: 'photo-${d.dog.id}-${c.noticeId}',
-      ),
-    );
+    final photo = _photoPair(c, wide);
     final summary = _summary(c);
     return PageBody(
       children: [
@@ -103,6 +93,55 @@ class _DetailScreenState extends State<DetailScreen> {
         _comparison(c),
         const SizedBox(height: Gap.xl),
       ],
+    );
+  }
+
+  /// 내 사진 ↔ 보호소 공고 사진 나란히 + 사진 유사도
+  Widget _photoPair(Candidate c, bool wide) {
+    final d = widget.myDog;
+    Widget labeled(Widget photo, String label) => Stack(children: [
+          Positioned.fill(child: photo),
+          Positioned(
+            left: 10,
+            top: 10,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+              decoration: BoxDecoration(color: const Color(0xCC16233F), borderRadius: BorderRadius.circular(99)),
+              child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ]);
+    final mine = labeled(
+        DogPhoto(bytes: d.photoBytes, asset: d.photoAsset, breed: d.dog.breed, radius: 20), '내 강아지 · ${d.name}');
+    final shelter = labeled(
+        DogPhoto(
+          url: c.displayPhotoUrl,
+          noticeId: c.noticeId,
+          breed: c.source == 'seed' ? c.breed : null,
+          radius: 20,
+          heroTag: 'photo-${d.dog.id}-${c.noticeId}',
+        ),
+        c.source == 'seed' ? '예시 공고 사진' : '보호소 공고 사진');
+    final img = c.score.image;
+    final badge = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), boxShadow: AppShadows.hover),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        const Icon(Icons.image_search_rounded, size: 18, color: Color(0xFF0EA5E9)),
+        Text(img == null ? '-' : pct(img), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+        Text(img == null ? imageNote(c) : '사진 유사도', style: const TextStyle(fontSize: 10.5, color: AppColors.subtext)),
+      ]),
+    );
+    return AspectRatio(
+      aspectRatio: wide ? 1.1 : 1.6,
+      child: Stack(alignment: Alignment.center, children: [
+        Row(children: [
+          Expanded(child: mine),
+          const SizedBox(width: 10),
+          Expanded(child: shelter),
+        ]),
+        badge,
+      ]),
     );
   }
 
@@ -149,7 +188,13 @@ class _DetailScreenState extends State<DetailScreen> {
           _info(Icons.event_outlined, '발견일', '${ymd(c.foundDate)} (실종 ${dayDiff(widget.myDog.dog, c)}일 후)'),
           _info(Icons.place_outlined, '발견 장소', '${c.foundAddress}${km != null ? '  ·  실종 위치에서 ${km.toStringAsFixed(1)}km' : ''}'),
           _info(Icons.home_work_outlined, '보호소', c.shelterName),
+          if (c.shelterAddress.isNotEmpty) _info(Icons.map_outlined, '보호소 주소', c.shelterAddress),
           _info(Icons.call_outlined, '연락처', c.shelterPhone),
+          if (c.noticeStart != null || c.noticeEnd != null)
+            _info(Icons.date_range_outlined, '공고 기간',
+                '${c.noticeStart == null ? '-' : ymd(c.noticeStart!)} ~ ${c.noticeEnd == null ? '-' : ymd(c.noticeEnd!)}'),
+          if (c.weight.isNotEmpty || c.sex.isNotEmpty)
+            _info(Icons.info_outline_rounded, '추가 정보', _extraInfo(c)),
           const SizedBox(height: 18),
           Wrap(spacing: 10, runSpacing: 10, children: [
             FilledButton.icon(
@@ -183,27 +228,48 @@ class _DetailScreenState extends State<DetailScreen> {
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Icon(i, size: 18, color: AppColors.coral),
           const SizedBox(width: 10),
-          SizedBox(width: 70, child: Text(k, style: const TextStyle(color: AppColors.subtext))),
+          SizedBox(width: 82, child: Text(k, style: const TextStyle(color: AppColors.subtext))),
           Expanded(child: Text(v, style: const TextStyle(fontWeight: FontWeight.w600))),
         ]),
       );
 
+  String _extraInfo(Candidate c) {
+    final sex = switch (c.sex) { 'M' => '수컷', 'F' => '암컷', _ => '' };
+    final neuter = switch (c.neuter) { 'Y' => '중성화 O', 'N' => '중성화 X', _ => '' };
+    return [if (c.weight.isNotEmpty) c.weight, sex, neuter, if (c.processState.isNotEmpty) c.processState]
+        .where((e) => e.isNotEmpty)
+        .join(' · ');
+  }
+
   Widget _scores(Candidate c) {
-    final items = scoreItems(c);
+    final s = c.score;
+    final small = const TextStyle(fontSize: 12.5, color: AppColors.subtext, fontWeight: FontWeight.w700);
     return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SectionTitle('항목별 유사도', subtitle: '규칙 점수 6개 + AI 멀티모달 점수 2개'),
+          const SectionTitle('AI 유사도 매칭', subtitle: '텍스트 · 이미지 두 갈래를 규칙 점수와 함께 멀티모달로 융합해요'),
+          const SizedBox(height: 14),
+          BranchBars(items: branchItems(c)),
           const SizedBox(height: 16),
-          for (var i = 0; i < items.length; i++)
-            ScoreBar(item: items[i], delay: Duration(milliseconds: 120 + i * 90)),
+          const Divider(),
+          const SizedBox(height: 10),
+          Text('텍스트 알고리즘 세부 (${s.textMethod == 'sentence-transformers' ? 'AI 문장 임베딩' : '글자 n-gram'})', style: small),
+          for (final (i, it) in textItems(c).indexed)
+            ScoreBar(item: it, delay: Duration(milliseconds: 400 + i * 90)),
+          const SizedBox(height: 10),
+          Text('규칙 점수 ${s.rule == null ? '' : pct(s.rule!)} (품종·색상·거리·날짜·나이)', style: small),
+          for (final (i, it) in ruleItems(c).indexed)
+            ScoreBar(item: it, delay: Duration(milliseconds: 700 + i * 90)),
           const SizedBox(height: 14),
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(12)),
             child: Text(
-              '종합 유사도 = 항목 점수 × 가중치의 합\n(품종 ${_w(items[0])} · 색상 ${_w(items[1])} · 거리 ${_w(items[2])} · 날짜 ${_w(items[3])} · 특징 ${_w(items[4])} · 나이 ${_w(items[5])} · 이미지 ${_w(items[6])} · 텍스트 ${_w(items[7])})',
+              '멀티모달 최종 = 규칙 45% + 텍스트 25% + 이미지 30%\n'
+              '텍스트 = 키워드 40% + 문장 의미 40% + 속성·성향 20%\n'
+              '규칙 = 품종 25% · 색상 25% · 거리 25% · 날짜 15% · 나이 10%\n'
+              '사진을 등록하지 않으면 이미지는 빼고 계산하고, 공고 사진이 없으면 중립값 40점을 넣어요.',
               style: const TextStyle(fontSize: 12.5, color: AppColors.subtext, height: 1.6),
             ),
           ),
@@ -211,8 +277,6 @@ class _DetailScreenState extends State<DetailScreen> {
       ),
     );
   }
-
-  String _w(ScoreItem i) => '${(i.weight * 100).round()}%';
 
   Widget _reasons(Candidate c) {
     final ex = explain(widget.myDog.dog, c);
@@ -267,7 +331,7 @@ class _DetailScreenState extends State<DetailScreen> {
       ('나이', d.age ?? '-', c.age ?? '-', c.score.age),
       ('날짜', '${ymd(d.lostDate)} 실종', '${ymd(c.foundDate)} 발견', c.score.date),
       ('위치', d.lostAddress, '${c.foundAddress}${km != null ? ' (${km.toStringAsFixed(1)}km)' : ''}', c.score.distance),
-      ('특징', d.features, c.features, c.score.features),
+      ('특징', d.features, c.features.isEmpty ? '-' : c.features, c.score.features),
     ];
     Widget head(String title, Widget photo, String sub) => Expanded(
           child: Column(children: [
@@ -292,7 +356,8 @@ class _DetailScreenState extends State<DetailScreen> {
               child: Icon(Icons.compare_arrows_rounded, color: AppColors.coral, size: 32),
             ),
             head('공고 ${c.noticeNo.split('-').last}',
-                DogPhoto(url: c.photoUrl, noticeId: c.noticeId, breed: c.breed, radius: 20), c.shelterName),
+                DogPhoto(url: c.displayPhotoUrl, noticeId: c.noticeId, breed: c.source == 'seed' ? c.breed : null, radius: 20),
+                c.shelterName),
           ]),
           const SizedBox(height: 20),
           for (final (k, a, b, v) in rows) _cmpRow(k, a, b, v, narrow),

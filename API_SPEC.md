@@ -33,15 +33,16 @@
 
 | 필드 | 설명 |
 |------|------|
-| breed | 품종 유사도 |
-| color | 색상 유사도 |
-| distance | 거리 점수 (가까울수록 높음) |
-| date | 날짜 점수 (차이 작을수록 높음) |
-| features | 특징 키워드/텍스트 유사도 |
-| age | 나이 유사도 |
-| image | 사진(이미지) 유사도 (AI, 없으면 null) |
-| text | 설명 문장 임베딩 유사도 (AI, 없으면 null) |
-| total | 융합 최종 점수 |
+| breed / color / distance / date / age | 규칙 항목 점수 |
+| features | 특징 키워드 점수 (= text_keyword, 예전 호환) |
+| rule | 규칙 점수 (품종 25·색상 25·거리 25·날짜 15·나이 10) |
+| text | 텍스트 점수 = 키워드 0.4 + 문장 의미 0.4 + 속성/성향 0.2 |
+| text_keyword / text_semantic / text_attribute | 텍스트 세부 (attribute 는 비교할 속성이 없으면 null) |
+| text_method | `sentence-transformers` 또는 `char-ngram` |
+| image | 사진 유사도 (사진이 없으면 null) |
+| image_method | `clip` 또는 `color-hist+dhash` |
+| image_status | `ok` · `no_user_photo` · `no_notice_photo` · `fetch_failed` |
+| total | 멀티모달 최종 = 규칙 0.45 + 텍스트 0.25 + 이미지 0.30 (사용자 사진 없으면 이미지 제외 후 재분배, 공고 사진만 없으면 이미지 0.40 중립값) |
 
 ### Candidate (유사 후보)
 
@@ -63,6 +64,15 @@
 | score | ScoreBreakdown | 항목별·총점 |
 | reasons | string[] | 한국어 추천 이유 |
 | rank | int | 순위 (1부터) |
+| rule_score / text_score / image_score / final_score | number | 세 갈래 + 최종 (score 안의 rule/text/image/total 과 동일) |
+| source | string | `seed`(예시) 또는 `animal_api`(공공 API) |
+| photo_url2 | string \| null | 두 번째 공고 사진 (popfile2) |
+| photo_proxy_url / photo2_proxy_url | string \| null | 서버 경유 사진 경로 (웹 CORS 회피, base URL 뒤에 붙여 사용) |
+| kind_full, sex, neuter, weight, process_state, org_name | string | 공고 상세 |
+| shelter_address | string | 보호소 주소 (careAddr) |
+| notice_start / notice_end | string (YYYY-MM-DD) \| null | 공고 기간 |
+| common_keywords / matched_attributes | string[] | 공통 특징 키워드 / 일치한 문장 속성 |
+| dist_km / day_diff | number | 거리(km) / 발견일-실종일 |
 
 ### NotificationItem
 
@@ -139,9 +149,13 @@ Header: `Authorization: Bearer <token>`
   "lost_date": "2026-10-28",
   "lost_lat": 37.5665,
   "lost_lng": 126.9780,
-  "lost_address": "서울특별시 중구 명동"
+  "lost_address": "서울특별시 중구 명동",
+  "photo_data": "<선택: 사진 base64 또는 data:image/jpeg;base64,...>"
 }
 ```
+
+`photo_data` 를 보내면 서버가 사진을 저장하고 이미지 임베딩을 계산해 이미지 유사도에 씁니다.
+응답에 `has_photo`, `photo_proxy_url`(`/api/v1/lost-dogs/{id}/photo`), `image_method` 가 추가됩니다.
 
 ### Response `201`
 
@@ -266,7 +280,10 @@ Header: `Authorization: Bearer <token>`
 ## 6. 공고 시드/수집 (서버 운영)
 
 - `POST /api/v1/admin/seed` — 예시 공고 적재 (키 없이 시연)
-- `POST /api/v1/admin/collect` — 공공 API 수집 (`SERVICE_KEY` 필요)
+- `POST /api/v1/admin/collect?pages=1&rows=100&embed_images=true` — 공공 API 수집 (`SERVICE_KEY` 필요), 사진 임베딩까지 계산
+- `GET /api/v1/notices/{notice_id}/photo?n=1|2` — 공고 사진 (서버 캐시 경유, CORS 허용)
+- `GET /api/v1/lost-dogs/{id}/photo` — 보호자가 올린 사진
+- `GET /api/v1/system` — 모드(api/sample), 공고 수, 사진 임베딩 수, 텍스트·이미지 방식, 가중치
   - 엔드포인트: `https://apis.data.go.kr/1543061/abandonmentPublicService_v2/abandonmentPublic_v2`
   - 포털: https://www.data.go.kr/data/15098931/openapi.do
 
@@ -274,21 +291,15 @@ Header: `Authorization: Bearer <token>`
 
 ## 점수 융합 (멀티모달)
 
-최종 `total`은 규칙 항목(품종·색상·거리·날짜·특징·나이)과 AI 항목(이미지·텍스트)을 가중 합산한다.
-AI 모델이 없으면 규칙 기반만으로 동작하며 `image`/`text`는 null이 될 수 있다.
+```
+final = rule × 0.45 + text × 0.25 + image × 0.30
+rule  = breed 0.25 + color 0.25 + distance 0.25 + date 0.15 + age 0.10
+text  = keyword 0.4 + semantic 0.4 + attribute 0.2   (attribute 없으면 재분배)
+```
 
-가중치 예 (시연용, 조정 가능):
-
-| 항목 | 가중치 |
-|------|--------|
-| breed | 0.15 |
-| color | 0.12 |
-| distance | 0.15 |
-| date | 0.10 |
-| features | 0.10 |
-| age | 0.08 |
-| image | 0.18 |
-| text | 0.12 |
+- 사용자 사진이 없으면 image 를 빼고 남은 가중치로 다시 나눕니다.
+- 사용자 사진은 있는데 공고 사진이 없거나 받지 못하면 image 에 중립값 0.40 을 넣습니다 (`image` 필드는 null).
+- 웹 Mock 모드도 같은 공식을 씁니다 (`web/lib/matching/scorer.dart`).
 
 ---
 

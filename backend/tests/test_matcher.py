@@ -95,6 +95,10 @@ def test_score_pair_ranks_similar_higher():
     # 같은 견종이어도 거리가 멀면(부산) 총점이 서울 유사 후보보다 낮을 수 있음 — 여기선 유사 케이스가 의미 있게 점수 갖는지 확인
     assert similar.total > 0.5
     assert any("색상 유사" in r for r in similar.reasons)
-    assert any("사진 유사도" in r for r in similar.reasons)
+    # 사진이 없으면 이미지 점수는 제외(null)하고 이유에 표시
+    assert similar.image is None
+    assert any("사진 미등록" in r for r in similar.reasons)
     assert any("설명 텍스트 유사도" in r for r in similar.reasons)
+    assert any("멀티모달 최종" in r for r in similar.reasons)
     assert far.distance < 0.3  # 부산은 거리 점수 낮음
+    assert 0 <= similar.text <= 1 and 0 <= similar.rule <= 1

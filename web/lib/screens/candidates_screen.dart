@@ -164,6 +164,8 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
               child: CandidateCard(
                 candidate: list[i],
                 dog: d.dog,
+                myPhotoBytes: d.photoBytes,
+                myPhotoAsset: d.photoAsset,
                 rank: all.indexOf(list[i]) + 1,
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(
                   builder: (_) => DetailScreen(myDog: d, noticeId: list[i].noticeId, preview: list[i]),

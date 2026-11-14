@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:http/http.dart' as http;
 
 import '../models/app_notification.dart';
@@ -33,6 +35,7 @@ class ApiRepository implements PetSignalRepository {
   @override
   Future<LostDog> registerLostDog({
     String? photoUrl,
+    Uint8List? photoBytes,
     required String breed,
     required String color,
     required String features,
@@ -44,6 +47,7 @@ class ApiRepository implements PetSignalRepository {
   }) async {
     final body = {
       'photo_url': photoUrl,
+      if (photoBytes != null) 'photo_data': base64Encode(photoBytes),
       'breed': breed,
       'color': color,
       'features': features,
@@ -81,7 +85,7 @@ class ApiRepository implements PetSignalRepository {
     if (res.statusCode != 200) throw StateError('candidates failed');
     final map = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
     final items = map['items'] as List<dynamic>? ?? [];
-    return items.map((e) => Candidate.fromJson(e as Map<String, dynamic>)).toList();
+    return items.map((e) => Candidate.fromJson(e as Map<String, dynamic>, baseUrl: baseUrl)).toList();
   }
 
   @override
@@ -91,7 +95,7 @@ class ApiRepository implements PetSignalRepository {
       headers: _headers(),
     );
     if (res.statusCode != 200) throw StateError('candidate detail failed');
-    return Candidate.fromJson(jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>);
+    return Candidate.fromJson(jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>, baseUrl: baseUrl);
   }
 
   @override

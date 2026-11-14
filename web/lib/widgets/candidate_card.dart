@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import '../matching/explain.dart';
@@ -6,14 +8,25 @@ import '../models/lost_dog.dart';
 import '../theme/app_theme.dart';
 import '../utils/format.dart';
 import 'common.dart';
+import 'score_bar.dart';
 
 /// 유사 후보 카드 (사진 + 총점 링 + 일치 칩)
 class CandidateCard extends StatelessWidget {
-  const CandidateCard({super.key, required this.candidate, required this.dog, required this.onTap, required this.rank});
+  const CandidateCard({
+    super.key,
+    required this.candidate,
+    required this.dog,
+    required this.onTap,
+    required this.rank,
+    this.myPhotoBytes,
+    this.myPhotoAsset,
+  });
   final Candidate candidate;
   final LostDog dog;
   final VoidCallback onTap;
   final int rank;
+  final Uint8List? myPhotoBytes;
+  final String? myPhotoAsset;
 
   @override
   Widget build(BuildContext context) {
@@ -43,14 +56,40 @@ class CandidateCard extends StatelessWidget {
                 child: AspectRatio(
                 aspectRatio: 4 / 3,
                 child: DogPhoto(
-                  url: c.photoUrl,
+                  url: c.displayPhotoUrl,
                   noticeId: c.noticeId,
-                  breed: c.breed,
+                  breed: c.source == 'seed' ? c.breed : null,
                   radius: 0,
                   heroTag: 'photo-${dog.id}-${c.noticeId}',
                 ),
               ),
               ),
+              Positioned(
+                right: 12,
+                top: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(color: const Color(0xCC16233F), borderRadius: BorderRadius.circular(99)),
+                  child: Text(c.source == 'seed' ? '예시 공고 사진' : '보호소 공고 사진',
+                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                ),
+              ),
+              if (myPhotoBytes != null || myPhotoAsset != null)
+                Positioned(
+                  left: 12,
+                  bottom: 12,
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: AppShadows.soft),
+                    child: ClipOval(
+                      child: SizedBox(
+                        width: 52,
+                        height: 52,
+                        child: DogPhoto(bytes: myPhotoBytes, asset: myPhotoAsset, radius: 0),
+                      ),
+                    ),
+                  ),
+                ),
               Positioned(
                 left: 12,
                 top: 12,
@@ -105,6 +144,8 @@ class CandidateCard extends StatelessWidget {
                 const SizedBox(height: 12),
                 Wrap(spacing: 6, runSpacing: 6, children: chips),
                 const SizedBox(height: 12),
+                BranchBars(items: branchItems(c), compact: true),
+                const SizedBox(height: 10),
                 Row(children: [
                   const Icon(Icons.home_work_outlined, size: 15, color: AppColors.subtext),
                   const SizedBox(width: 4),

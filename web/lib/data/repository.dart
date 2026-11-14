@@ -1,11 +1,15 @@
+import 'dart:typed_data';
+
 import '../models/app_notification.dart';
 import '../models/candidate.dart';
 import '../models/lost_dog.dart';
 
 /// 데이터 계층 추상 인터페이스 (Mock ↔ API 교체)
 abstract class PetSignalRepository {
+  /// [photoBytes]: 보호자가 올린 사진 (이미지 유사도 계산에 사용)
   Future<LostDog> registerLostDog({
     String? photoUrl,
+    Uint8List? photoBytes,
     required String breed,
     required String color,
     required String features,

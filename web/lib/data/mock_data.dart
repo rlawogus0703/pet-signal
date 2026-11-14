@@ -38,6 +38,9 @@ List<Notice> exampleNotices() => [
         foundAddress: '경기도 오산시 원동 오산천 산책로',
         shelterName: '오산시 동물보호센터',
         shelterPhone: '031-8036-7614',
+        shelterAddress: '경기도 오산시 (예시 보호소 주소)',
+        noticeStart: DateTime(2026, 11, 2),
+        noticeEnd: DateTime(2026, 11, 12),
         noticeUrl: _url,
       ),
       Notice(
@@ -53,6 +56,9 @@ List<Notice> exampleNotices() => [
         foundAddress: '경기도 화성시 봉담읍 와우리',
         shelterName: '화성시 동물보호센터',
         shelterPhone: '031-8015-4421',
+        shelterAddress: '경기도 화성시 (예시 보호소 주소)',
+        noticeStart: DateTime(2026, 11, 3),
+        noticeEnd: DateTime(2026, 11, 13),
         noticeUrl: _url,
       ),
       Notice(
@@ -68,6 +74,9 @@ List<Notice> exampleNotices() => [
         foundAddress: '경기도 수원시 권선구 세류동',
         shelterName: '수원시 동물보호센터',
         shelterPhone: '031-228-3512',
+        shelterAddress: '경기도 수원시 (예시 보호소 주소)',
+        noticeStart: DateTime(2026, 10, 31),
+        noticeEnd: DateTime(2026, 11, 10),
         noticeUrl: _url,
       ),
       Notice(
@@ -83,6 +92,9 @@ List<Notice> exampleNotices() => [
         foundAddress: '경기도 오산시 세교동',
         shelterName: '오산시 동물보호센터',
         shelterPhone: '031-8036-7614',
+        shelterAddress: '경기도 오산시 (예시 보호소 주소)',
+        noticeStart: DateTime(2026, 11, 1),
+        noticeEnd: DateTime(2026, 11, 11),
         noticeUrl: _url,
       ),
       Notice(
@@ -98,6 +110,9 @@ List<Notice> exampleNotices() => [
         foundAddress: '경기도 평택시 비전동',
         shelterName: '평택시 유기동물보호소',
         shelterPhone: '031-8024-3650',
+        shelterAddress: '경기도 평택시 (예시 보호소 주소)',
+        noticeStart: DateTime(2026, 10, 29),
+        noticeEnd: DateTime(2026, 11, 8),
         noticeUrl: _url,
       ),
       Notice(
@@ -113,6 +128,9 @@ List<Notice> exampleNotices() => [
         foundAddress: '경기도 성남시 분당구 정자동',
         shelterName: '성남시 동물보호센터',
         shelterPhone: '031-729-3122',
+        shelterAddress: '경기도 성남시 (예시 보호소 주소)',
+        noticeStart: DateTime(2026, 10, 27),
+        noticeEnd: DateTime(2026, 11, 6),
         noticeUrl: _url,
       ),
       Notice(
@@ -128,6 +146,9 @@ List<Notice> exampleNotices() => [
         foundAddress: '경기도 용인시 기흥구 구갈동',
         shelterName: '용인시 동물보호센터',
         shelterPhone: '031-324-3466',
+        shelterAddress: '경기도 용인시 (예시 보호소 주소)',
+        noticeStart: DateTime(2026, 10, 30),
+        noticeEnd: DateTime(2026, 11, 9),
         noticeUrl: _url,
       ),
       Notice(
@@ -143,6 +164,9 @@ List<Notice> exampleNotices() => [
         foundAddress: '경기도 화성시 동탄1동',
         shelterName: '화성시 동물보호센터',
         shelterPhone: '031-8015-4421',
+        shelterAddress: '경기도 화성시 (예시 보호소 주소)',
+        noticeStart: DateTime(2026, 11, 2),
+        noticeEnd: DateTime(2026, 11, 12),
         noticeUrl: _url,
       ),
       Notice(
@@ -158,6 +182,9 @@ List<Notice> exampleNotices() => [
         foundAddress: '경기도 안성시 공도읍',
         shelterName: '안성시 동물보호센터',
         shelterPhone: '031-678-3023',
+        shelterAddress: '경기도 안성시 (예시 보호소 주소)',
+        noticeStart: DateTime(2026, 10, 25),
+        noticeEnd: DateTime(2026, 11, 4),
         noticeUrl: _url,
       ),
       Notice(
@@ -173,6 +200,9 @@ List<Notice> exampleNotices() => [
         foundAddress: '서울특별시 강남구 역삼동',
         shelterName: '강남구 유기동물보호소',
         shelterPhone: '02-3423-5992',
+        shelterAddress: '서울특별시 강남구 (예시 보호소 주소)',
+        noticeStart: DateTime(2026, 11, 4),
+        noticeEnd: DateTime(2026, 11, 14),
         noticeUrl: _url,
       ),
       Notice(
@@ -188,6 +218,9 @@ List<Notice> exampleNotices() => [
         foundAddress: '서울특별시 마포구 서교동',
         shelterName: '마포 동물사랑센터',
         shelterPhone: '02-3153-9421',
+        shelterAddress: '서울특별시 마포구 (예시 보호소 주소)',
+        noticeStart: DateTime(2026, 10, 28),
+        noticeEnd: DateTime(2026, 11, 7),
         noticeUrl: _url,
       ),
       Notice(
@@ -203,6 +236,9 @@ List<Notice> exampleNotices() => [
         foundAddress: '서울특별시 송파구 잠실동',
         shelterName: '송파구 동물보호센터',
         shelterPhone: '02-2147-3394',
+        shelterAddress: '서울특별시 송파구 (예시 보호소 주소)',
+        noticeStart: DateTime(2026, 11, 1),
+        noticeEnd: DateTime(2026, 11, 11),
         noticeUrl: _url,
       ),
       Notice(
@@ -218,6 +254,9 @@ List<Notice> exampleNotices() => [
         foundAddress: '경기도 수원시 영통구 매탄동',
         shelterName: '수원시 동물보호센터',
         shelterPhone: '031-228-3512',
+        shelterAddress: '경기도 수원시 (예시 보호소 주소)',
+        noticeStart: DateTime(2026, 10, 30),
+        noticeEnd: DateTime(2026, 11, 9),
         noticeUrl: _url,
       ),
       Notice(
@@ -233,6 +272,9 @@ List<Notice> exampleNotices() => [
         foundAddress: '경기도 고양시 일산동구 장항동',
         shelterName: '고양시 동물보호센터',
         shelterPhone: '031-962-1919',
+        shelterAddress: '경기도 고양시 (예시 보호소 주소)',
+        noticeStart: DateTime(2026, 10, 26),
+        noticeEnd: DateTime(2026, 11, 5),
         noticeUrl: _url,
       ),
       Notice(
@@ -248,6 +290,9 @@ List<Notice> exampleNotices() => [
         foundAddress: '경기도 안양시 동안구 평촌동',
         shelterName: '안양시 동물보호센터',
         shelterPhone: '031-8045-2496',
+        shelterAddress: '경기도 안양시 (예시 보호소 주소)',
+        noticeStart: DateTime(2026, 11, 3),
+        noticeEnd: DateTime(2026, 11, 13),
         noticeUrl: _url,
       ),
       Notice(
@@ -263,6 +308,9 @@ List<Notice> exampleNotices() => [
         foundAddress: '서울특별시 관악구 봉천동',
         shelterName: '관악구 동물보호센터',
         shelterPhone: '02-879-6862',
+        shelterAddress: '서울특별시 관악구 (예시 보호소 주소)',
+        noticeStart: DateTime(2026, 10, 29),
+        noticeEnd: DateTime(2026, 11, 8),
         noticeUrl: _url,
       ),
     ];

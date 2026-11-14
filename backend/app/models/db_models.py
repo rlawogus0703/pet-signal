@@ -36,6 +36,8 @@ class LostDogRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime)
     text_embedding_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     image_embedding_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    image_embed_method: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    photo_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
 
 class NoticeRow(Base):
@@ -61,6 +63,23 @@ class NoticeRow(Base):
     text_embedding_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     image_embedding_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     raw_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # 공공 API 상세 필드 (v2)
+    source: Mapped[str] = mapped_column(String(32), default="seed")
+    photo_url2: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    photo_local: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    kind_full: Mapped[str] = mapped_column(String(128), default="")
+    sex: Mapped[str] = mapped_column(String(8), default="")
+    neuter: Mapped[str] = mapped_column(String(8), default="")
+    weight: Mapped[str] = mapped_column(String(32), default="")
+    care_addr: Mapped[str] = mapped_column(String(256), default="")
+    org_nm: Mapped[str] = mapped_column(String(128), default="")
+    process_state: Mapped[str] = mapped_column(String(32), default="")
+    notice_start: Mapped[date | None] = mapped_column(Date, nullable=True)
+    notice_end: Mapped[date | None] = mapped_column(Date, nullable=True)
+    geo_level: Mapped[str] = mapped_column(String(128), default="")
+    image_embed_method: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    image_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    collected_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class MatchResultRow(Base):
@@ -78,6 +97,8 @@ class MatchResultRow(Base):
     score_image: Mapped[float | None] = mapped_column(Float, nullable=True)
     score_text: Mapped[float | None] = mapped_column(Float, nullable=True)
     score_total: Mapped[float] = mapped_column(Float, default=0)
+    score_rule: Mapped[float | None] = mapped_column(Float, nullable=True)
+    detail_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     reasons_json: Mapped[str] = mapped_column(Text, default="[]")
     created_at: Mapped[datetime] = mapped_column(DateTime)
 
@@ -86,6 +107,12 @@ class MatchResultRow(Base):
             return json.loads(self.reasons_json)
         except Exception:
             return []
+
+    def detail(self) -> dict:
+        try:
+            return json.loads(self.detail_json or "{}")
+        except Exception:
+            return {}
 
 
 class NotificationRow(Base):

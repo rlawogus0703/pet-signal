@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import base64
+import binascii
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.auth_deps import get_optional_user
@@ -20,7 +23,11 @@ from app.models.schemas import (
     NotificationOut,
     ScoreBreakdown,
 )
+from app.ai import image_embedder, text_similarity
+from app.ai.fusion import MODAL_WEIGHTS, RULE_WEIGHTS
+from app.config import get_settings
 from app.services.collector import collect_notices
+from app.services.image_index import notice_photo_bytes, save_dog_photo
 from app.services.matching_service import rematch_lost_dog
 from app.services.seed import seed_notices
 
@@ -45,25 +52,31 @@ def _dog_out(row: LostDogRow) -> LostDogOut:
         lost_lng=row.lost_lng,
         lost_address=row.lost_address,
         created_at=row.created_at,
+        has_photo=bool(row.photo_path),
+        photo_proxy_url=f"/api/v1/lost-dogs/{row.id}/photo" if row.photo_path else None,
+        image_method=row.image_embed_method,
     )
 
 
 def _candidate_out(match: MatchResultRow, notice: NoticeRow, rank: int) -> CandidateOut:
+    d = match.detail()
+    has_photo = bool(notice.photo_url or notice.photo_local)
+    nid = notice.notice_id
     return CandidateOut(
-        notice_id=notice.notice_id,
-        notice_no=notice.notice_no,
+        notice_id=nid,
+        notice_no=notice.notice_no or "",
         photo_url=notice.photo_url,
-        breed=notice.breed,
-        color=notice.color,
+        breed=notice.breed or "",
+        color=notice.color or "",
         age=notice.age,
-        features=notice.features,
+        features=notice.features or "",
         found_date=notice.found_date,
         found_lat=notice.found_lat,
         found_lng=notice.found_lng,
-        found_address=notice.found_address,
-        shelter_name=notice.shelter_name,
-        shelter_phone=notice.shelter_phone,
-        notice_url=notice.notice_url,
+        found_address=notice.found_address or "",
+        shelter_name=notice.shelter_name or "",
+        shelter_phone=notice.shelter_phone or "",
+        notice_url=notice.notice_url or "",
         score=ScoreBreakdown(
             breed=match.score_breed,
             color=match.score_color,
@@ -71,13 +84,67 @@ def _candidate_out(match: MatchResultRow, notice: NoticeRow, rank: int) -> Candi
             date=match.score_date,
             features=match.score_features,
             age=match.score_age,
+            rule=match.score_rule,
             image=match.score_image,
             text=match.score_text,
             total=match.score_total,
+            text_keyword=d.get("text_keyword"),
+            text_semantic=d.get("text_semantic"),
+            text_attribute=d.get("text_attribute"),
+            text_method=d.get("text_method"),
+            image_method=d.get("image_method"),
+            image_status=d.get("image_status"),
         ),
         reasons=match.reasons(),
         rank=rank,
+        rule_score=match.score_rule,
+        text_score=match.score_text,
+        image_score=match.score_image,
+        final_score=match.score_total,
+        source=notice.source or "seed",
+        photo_url2=notice.photo_url2,
+        photo_proxy_url=f"/api/v1/notices/{nid}/photo" if has_photo else None,
+        photo2_proxy_url=f"/api/v1/notices/{nid}/photo?n=2" if notice.photo_url2 else None,
+        kind_full=notice.kind_full or "",
+        sex=notice.sex or "",
+        neuter=notice.neuter or "",
+        weight=notice.weight or "",
+        shelter_address=notice.care_addr or "",
+        org_name=notice.org_nm or "",
+        process_state=notice.process_state or "",
+        notice_start=notice.notice_start,
+        notice_end=notice.notice_end,
+        common_keywords=d.get("common_keywords") or [],
+        matched_attributes=d.get("matched_attributes") or [],
+        dist_km=d.get("dist_km"),
+        day_diff=d.get("day_diff"),
     )
+
+
+def _image_type(data: bytes) -> str:
+    if data[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if data[:4] == b"GIF8":
+        return "image/gif"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    return "application/octet-stream"
+
+
+def _decode_photo(raw: str | None) -> bytes | None:
+    if not raw:
+        return None
+    if raw.startswith("data:") and "," in raw:
+        raw = raw.split(",", 1)[1]
+    try:
+        data = base64.b64decode(raw, validate=False)
+    except (binascii.Error, ValueError):
+        raise HTTPException(400, "photo_data is not valid base64")
+    if len(data) > 8 * 1024 * 1024:
+        raise HTTPException(400, "photo too large (max 8MB)")
+    return data or None
 
 
 @router.post("/lost-dogs", response_model=LostDogOut, status_code=201)
@@ -100,6 +167,9 @@ def register_lost_dog(
         lost_address=body.lost_address,
         created_at=_now(),
     )
+    photo = _decode_photo(body.photo_data)
+    if photo:
+        save_dog_photo(row, photo)
     db.add(row)
     db.commit()
     rematch_lost_dog(db, row.id)
@@ -218,5 +288,59 @@ def admin_seed(db: Session = Depends(get_db)):
 
 
 @router.post("/admin/collect")
-def admin_collect(db: Session = Depends(get_db)):
-    return collect_notices(db)
+def admin_collect(
+    pages: int = Query(1, ge=1, le=20),
+    rows: int = Query(100, ge=1, le=1000),
+    embed_images: bool = Query(True),
+    db: Session = Depends(get_db),
+):
+    """공공 API 수집 (SERVICE_KEY 필요). 수집 후 사진 임베딩까지 계산."""
+    return collect_notices(db, pages=pages, num_of_rows=rows, embed_images=embed_images)
+
+
+# ── 사진 (웹에서 CORS 없이 보기 위한 서버 경유 주소) ───────────────
+@router.get("/notices/{notice_id}/photo")
+def notice_photo(notice_id: str, n: int = Query(1, ge=1, le=2), db: Session = Depends(get_db)):
+    notice = db.get(NoticeRow, notice_id)
+    if not notice:
+        raise HTTPException(404, "notice not found")
+    data = notice_photo_bytes(notice, which=n)
+    if not data:
+        raise HTTPException(404, "photo not available")
+    return Response(content=data, media_type=_image_type(data), headers={"Cache-Control": "public, max-age=86400"})
+
+
+@router.get("/lost-dogs/{lost_dog_id}/photo")
+def lost_dog_photo(lost_dog_id: str, db: Session = Depends(get_db)):
+    dog = db.get(LostDogRow, lost_dog_id)
+    if not dog or not dog.photo_path or not Path(dog.photo_path).is_file():
+        raise HTTPException(404, "photo not found")
+    data = Path(dog.photo_path).read_bytes()
+    return Response(content=data, media_type=_image_type(data))
+
+
+# ── 시스템 구성 정보 (발표·디버그용) ─────────────────────────────
+@router.get("/system")
+def system_info(db: Session = Depends(get_db)):
+    st = get_settings()
+    counts = dict(db.execute(select(NoticeRow.source, func.count()).group_by(NoticeRow.source)).all())
+    with_img = db.scalar(select(func.count()).where(NoticeRow.image_embedding_json.is_not(None))) or 0
+    return {
+        "mode": "api" if st.decoded_service_key else "sample",
+        "service_key_configured": bool(st.decoded_service_key),
+        "notices": {k or "seed": v for k, v in counts.items()},
+        "notices_with_image_embedding": with_img,
+        "pipeline": {
+            "input": ["나이", "지역", "사진", "품종", "색상", "특징"],
+            "data": ["실종견 DB", "공공데이터 API (구조동물 조회 v2)"],
+            "text_branch": {
+                "parts": ["keyword", "semantic", "attribute"],
+                "weights": text_similarity.TEXT_WEIGHTS,
+                "semantic_method": text_similarity.semantic_method(),
+            },
+            "image_branch": {"method": image_embedder.current_method()},
+            "rule_weights": RULE_WEIGHTS,
+            "fusion_weights": MODAL_WEIGHTS,
+            "output": "실종견 매칭 추천 (유사 후보 + 이유)",
+        },
+    }

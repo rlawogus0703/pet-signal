@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI
@@ -18,10 +19,17 @@ from app.services.seed import seed_notices
 
 make_console_safe()
 logging.basicConfig(level=logging.INFO)
+# httpx 는 요청 URL(인증키 포함)을 INFO 로 찍으므로 숨깁니다
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 log = logging.getLogger("petsignal")
 
 settings = get_settings()
-app = FastAPI(title="Pet Signal API", version="0.1.0", description="10조 펫 시그널 — 유사 후보 매칭")
+app = FastAPI(
+    title="Pet Signal API",
+    version="0.2.0",
+    description="10조 펫 시그널 — 텍스트·이미지·규칙 멀티모달 유사 후보 매칭",
+)
 
 origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
 app.add_middleware(
@@ -48,7 +56,11 @@ def on_startup() -> None:
     finally:
         db.close()
 
-    if settings.enable_scheduler and settings.service_key:
+    if settings.decoded_service_key and settings.collect_on_startup:
+        log.info("SERVICE_KEY found - collecting public notices in background (API mode)")
+        threading.Thread(target=_job_collect, daemon=True).start()
+
+    if settings.enable_scheduler and settings.decoded_service_key:
         _scheduler = BackgroundScheduler()
         _scheduler.add_job(
             _job_collect,
@@ -60,7 +72,7 @@ def on_startup() -> None:
         _scheduler.start()
         log.info("APScheduler started (every %s min)", settings.collect_interval_minutes)
     else:
-        log.info("Scheduler disabled or SERVICE_KEY missing - seed-only mode")
+        log.info("Scheduler disabled or SERVICE_KEY missing - sample(seed) mode")
 
 
 @app.on_event("shutdown")
@@ -84,4 +96,8 @@ def _job_collect() -> None:
 
 @app.get("/health")
 def health():
-    return {"ok": True, "service": "pet-signal"}
+    return {
+        "ok": True,
+        "service": "pet-signal",
+        "mode": "api" if settings.decoded_service_key else "sample",
+    }

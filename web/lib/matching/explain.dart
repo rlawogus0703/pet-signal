@@ -5,30 +5,67 @@ import '../models/lost_dog.dart';
 import '../utils/format.dart';
 import 'normalizer.dart';
 import 'scorer.dart';
+import 'text_similarity.dart';
 
 class ScoreItem {
-  const ScoreItem(this.label, this.icon, this.value, this.weight, {this.ai = false});
+  const ScoreItem(this.label, this.icon, this.value, this.weight, {this.ai = false, this.note});
   final String label;
   final IconData icon;
   final double? value;
   final double weight;
   final bool ai;
+  final String? note; // 값이 없을 때 이유 등
 }
 
-List<ScoreItem> scoreItems(Candidate c) {
+/// 규칙 기반 항목 (품종·색상·거리·날짜·나이) — weight 는 규칙 점수 안의 비중
+List<ScoreItem> ruleItems(Candidate c) {
   final s = c.score;
-  final w = RuleScorer.weights;
+  final w = RuleScorer.ruleWeights;
   return [
     ScoreItem('품종', Icons.pets_rounded, s.breed, w['breed']!),
     ScoreItem('색상', Icons.palette_outlined, s.color, w['color']!),
     ScoreItem('거리', Icons.place_outlined, s.distance, w['distance']!),
     ScoreItem('날짜', Icons.event_outlined, s.date, w['date']!),
-    ScoreItem('특징', Icons.label_outline_rounded, s.features, w['features']!),
     ScoreItem('나이', Icons.cake_outlined, s.age, w['age']!),
-    ScoreItem('이미지 유사도', Icons.image_search_rounded, s.image, w['image']!, ai: true),
-    ScoreItem('텍스트 유사도', Icons.text_snippet_outlined, s.text, w['text']!, ai: true),
   ];
 }
+
+/// 텍스트 갈래 세부 (키워드 · 문장 의미 · 속성/성향)
+List<ScoreItem> textItems(Candidate c) {
+  final s = c.score;
+  final w = TextSimilarity.weights;
+  return [
+    ScoreItem('키워드', Icons.label_outline_rounded, s.textKeyword ?? s.features, w['keyword']!, ai: true),
+    ScoreItem('문장 의미', Icons.short_text_rounded, s.textSemantic, w['semantic']!, ai: true),
+    ScoreItem('속성·성향', Icons.psychology_alt_outlined, s.textAttribute, w['attribute']!,
+        ai: true, note: '비교할 속성 없음'),
+  ];
+}
+
+String imageNote(Candidate c) => switch (c.score.imageStatus) {
+      'no_user_photo' => '사진 미등록',
+      'fetch_failed' => '공고 사진 오류',
+      'no_notice_photo' => '공고 사진 없음',
+      _ => '-',
+    };
+
+/// 교수님 구성도의 세 갈래: 텍스트 / 이미지 / 멀티모달 최종
+List<ScoreItem> branchItems(Candidate c) {
+  final s = c.score;
+  final m = RuleScorer.modalWeights;
+  return [
+    ScoreItem('텍스트', Icons.text_snippet_outlined, s.text, m['text']!, ai: true),
+    ScoreItem('이미지', Icons.image_search_rounded, s.image, m['image']!, ai: true, note: imageNote(c)),
+    ScoreItem('멀티모달 최종', Icons.hub_outlined, s.total, 1.0),
+  ];
+}
+
+/// 예전 화면 호환: 전체 항목
+List<ScoreItem> scoreItems(Candidate c) => [
+      ...ruleItems(c),
+      ScoreItem('이미지 유사도', Icons.image_search_rounded, c.score.image, RuleScorer.modalWeights['image']!, ai: true),
+      ScoreItem('텍스트 유사도', Icons.text_snippet_outlined, c.score.text, RuleScorer.modalWeights['text']!, ai: true),
+    ];
 
 double? distanceKm(LostDog d, Candidate c) {
   if (c.foundLat == null || c.foundLng == null) return null;
@@ -94,15 +131,14 @@ List<Explanation> explain(LostDog d, Candidate c) {
               : '실종일(${ymd(d.lostDate)})과 시간 차이가 조금 있어요.',
       s.date >= 0.7 ? 2 : (s.date >= 0.4 ? 1 : 0)));
 
-  if (s.features >= 0.15) {
-    final ta = Normalizer.featureTokens(d.features).toSet();
-    final tb = Normalizer.featureTokens(c.features).toSet();
-    final common = ta.intersection(tb).toList();
-    out.add(Explanation(
-        Icons.label_outline_rounded,
-        '특징 키워드 일치',
-        common.isEmpty ? '설명 문구가 일부 겹쳐요.' : '공통 키워드: ${common.map((e) => '"$e"').join(', ')}',
-        s.features >= 0.3 ? 2 : 1));
+  final common = c.commonKeywords.isNotEmpty ? c.commonKeywords : TextSimilarity.keywordMatches(d.features, c.features);
+  if (common.isNotEmpty) {
+    out.add(Explanation(Icons.label_outline_rounded, '특징 키워드 일치',
+        '공통 키워드: ${common.map((e) => '"$e"').join(', ')} (단어 알고리즘)', s.features >= 0.3 ? 2 : 1));
+  }
+  if (c.matchedAttributes.isNotEmpty) {
+    out.add(Explanation(Icons.psychology_alt_outlined, '문장 속성·성향 일치',
+        '설명 문장에서 뽑은 ${c.matchedAttributes.join(', ')} 정보가 서로 같아요.', 2));
   }
 
   if (s.age >= 0.8) {
@@ -110,13 +146,17 @@ List<Explanation> explain(LostDog d, Candidate c) {
   }
 
   final img = s.image, txt = s.text;
-  if (img != null || txt != null) {
-    out.add(Explanation(
-        Icons.auto_awesome_rounded,
-        'AI 멀티모달 유사도',
-        '사진 유사도 ${img == null ? '-' : pct(img)}점, 설명 문장 유사도 ${txt == null ? '-' : pct(txt)}점을 규칙 점수와 함께 융합했어요.',
-        ((img ?? 0) + (txt ?? 0)) / 2 >= 0.6 ? 2 : 1));
+  if (img != null) {
+    out.add(Explanation(Icons.image_search_rounded, '사진 유사도 ${pct(img)}점',
+        '등록한 사진과 보호소 공고 사진의 색상 분포·형태 특징을 비교했어요${s.imageMethod == 'clip' ? ' (CLIP AI)' : ''}.',
+        img >= 0.6 ? 2 : (img >= 0.4 ? 1 : 0)));
   }
+  out.add(Explanation(
+      Icons.hub_outlined,
+      '멀티모달 최종 ${pct(s.total)}점',
+      '규칙 ${s.rule == null ? '-' : pct(s.rule!)} · 텍스트 ${txt == null ? '-' : pct(txt)} · 이미지 ${img == null ? imageNote(c) : pct(img)} 점수를 '
+          '45 : 25 : 30 비율로 융합했어요.',
+      s.total >= 0.6 ? 2 : 1));
   if (nb1 != nb2 && nb2 == 'mix' && s.color >= 0.5) {
     out.insert(
         0,

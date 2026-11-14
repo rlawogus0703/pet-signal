@@ -1,89 +1,174 @@
-"""품종·색상·나이 표기 정규화."""
+"""품종·색상·나이·특징 표기 정규화.
 
+웹(web/lib/matching/normalizer.dart)과 같은 규칙을 씁니다. 한쪽을 고치면 다른 쪽도 같이 고쳐 주세요.
+(backend/tests/test_alignment.py 가 웹 테스트용 기준값을 검사합니다.)
+"""
+
+from __future__ import annotations
+
+import re
+from datetime import date
+
+# 순서 중요: 앞에 있는 키가 먼저 매칭됩니다 (예: 래브라도 → 리트리버보다 먼저)
 BREED_SYNONYMS = {
     "말티즈": "maltese",
     "말티스": "maltese",
     "maltese": "maltese",
-    "믹스": "mix",
-    "믹스견": "mix",
-    "잡종": "mix",
-    "혼종": "mix",
-    "푸들": "poodle",
     "토이푸들": "poodle",
+    "푸들": "poodle",
     "포메라니안": "pomeranian",
     "포메": "pomeranian",
     "시츄": "shih_tzu",
     "시추": "shih_tzu",
     "치와와": "chihuahua",
-    "진도": "jindo",
     "진돗개": "jindo",
+    "진도": "jindo",
+    "래브라도": "labrador",
     "리트리버": "retriever",
-    "골든리트리버": "retriever",
     "비글": "beagle",
-    "요크셔테리어": "yorkie",
     "요크셔": "yorkie",
     "비숑": "bichon",
-    "웰시코기": "corgi",
     "코기": "corgi",
     "닥스훈트": "dachshund",
+    "시바": "shiba",
+    "코카": "cocker",
+    "프렌치불독": "french_bulldog",
+    "불독": "bulldog",
+    "슈나우저": "schnauzer",
+    "스피츠": "spitz",
+    "페키니즈": "pekingese",
+    "보더콜리": "border_collie",
+    "셰퍼드": "shepherd",
+    "세퍼드": "shepherd",
+    "허스키": "husky",
+    "사모예드": "samoyed",
+    "풍산": "pungsan",
+    "삽살": "sapsal",
+    "퍼그": "pug",
+    "핀셔": "minpin",
+    "미니핀": "minpin",
+    "파피용": "papillon",
+    "잭러셀": "jack_russell",
+    "말라뮤트": "malamute",
+    "도베르만": "doberman",
+    "믹스": "mix",
+    "잡종": "mix",
+    "혼종": "mix",
+    "mix": "mix",
 }
 
+# 짧은 키(한 글자)도 포함: '황갈색' → 황(yellow)+갈(brown)
 COLOR_SYNONYMS = {
-    "흰색": "white",
+    "흰": "white",
+    "하얀": "white",
     "화이트": "white",
     "백색": "white",
     "크림": "cream",
-    "크림색": "cream",
     "아이보리": "cream",
     "베이지": "cream",
-    "검정": "black",
-    "검은색": "black",
-    "블랙": "black",
-    "갈색": "brown",
+    "노란": "yellow",
+    "노랑": "yellow",
+    "누렁": "yellow",
+    "황": "yellow",
+    "골드": "yellow",
+    "금색": "yellow",
+    "적갈": "brown",
+    "갈": "brown",
     "브라운": "brown",
-    "황색": "yellow",
-    "노란색": "yellow",
-    "회색": "gray",
+    "초코": "brown",
+    "밤색": "brown",
+    "레드": "brown",
+    "검": "black",
+    "흑": "black",
+    "블랙": "black",
+    "까만": "black",
+    "회": "gray",
     "그레이": "gray",
+    "실버": "gray",
     "삼색": "tricolor",
     "얼룩": "spotted",
     "점박이": "spotted",
+    "바둑": "spotted",
 }
 
-COLOR_NEIGHBORS = {
-    "white": {"cream"},
-    "cream": {"white", "yellow"},
-    "yellow": {"cream", "brown"},
-    "brown": {"yellow", "black"},
+COLOR_NEIGHBOR_PAIRS = [
+    ("white", "cream"),
+    ("cream", "yellow"),
+    ("yellow", "brown"),
+    ("brown", "black"),
+    ("white", "gray"),
+    ("gray", "black"),
+]
+COLOR_NEIGHBORS: dict[str, set[str]] = {}
+for _a, _b in COLOR_NEIGHBOR_PAIRS:
+    COLOR_NEIGHBORS.setdefault(_a, set()).add(_b)
+    COLOR_NEIGHBORS.setdefault(_b, set()).add(_a)
+
+STOPWORDS = {
+    "에", "의", "을", "를", "이", "가", "은", "는", "과", "와", "및", "등", "있음", "없음", "한", "함",
+    "있고", "있는", "있어요", "같음", "보임", "추정",
 }
+
+# 같은 뜻 단어를 하나로 (키워드 비교용)
+FEATURE_SYNONYMS = {
+    "목줄": "목걸이",
+    "인식표": "목걸이",
+    "소형견": "소형",
+    "초소형": "소형",
+    "중형견": "중형",
+    "대형견": "대형",
+    "옷을": "옷",
+    "의류": "옷",
+    "착용": "옷",
+    "처짐": "접힘",
+    "처진": "접힘",
+    "접힌": "접힘",
+}
+
+
+def _clean(raw: str) -> str:
+    return (raw or "").strip().lower().replace(" ", "")
 
 
 def norm_breed(raw: str) -> str:
-    t = (raw or "").strip().lower().replace(" ", "")
+    t = _clean(raw)
     for k, v in BREED_SYNONYMS.items():
         if k.lower() in t:
             return v
     return t
 
 
-def norm_color(raw: str) -> str:
-    t = (raw or "").strip().lower().replace(" ", "")
+def color_set(raw: str) -> list[str]:
+    """색상 코드 목록 (문자열에 나온 순서)."""
+    t = _clean(raw)
+    found: list[tuple[int, str]] = []
     for k, v in COLOR_SYNONYMS.items():
-        if k.lower() in t:
-            return v
-    return t
+        i = t.find(k.lower())
+        if i >= 0 and all(v != c for _, c in found):
+            found.append((i, v))
+    found.sort(key=lambda x: x[0])
+    return [c for _, c in found]
 
 
-def parse_age_years(raw: str | None) -> float | None:
+def norm_color(raw: str) -> str:
+    cs = color_set(raw)
+    return cs[0] if cs else _clean(raw)
+
+
+def parse_age_years(raw: str | None, today: date | None = None) -> float | None:
+    """'3살', '2~3년', '6개월', '2023(년생)', '2026(60일미만)(년생)' → 나이(년)."""
     if not raw:
         return None
-    import re
-
+    if "일미만" in raw or "일 미만" in raw:
+        return 0.1
     nums = [float(x) for x in re.findall(r"(\d+(?:\.\d+)?)", raw)]
     if not nums:
-        if any(x in raw for x in ("개월", "puppy", "새끼")):
+        if any(x in raw for x in ("개월", "puppy", "새끼", "자견")):
             return 0.5
         return None
+    if nums[0] >= 1990 and ("년생" in raw or nums[0] <= 2100):
+        ref = (today or date.today()).year
+        return max(0.25, ref - nums[0])
     if "개월" in raw:
         return nums[0] / 12.0
     if len(nums) >= 2:
@@ -91,9 +176,18 @@ def parse_age_years(raw: str | None) -> float | None:
     return nums[0]
 
 
-def feature_tokens(text: str) -> list[str]:
-    import re
+def parse_weight_kg(raw: str | None) -> float | None:
+    if not raw:
+        return None
+    m = re.search(r"(\d+(?:\.\d+)?)", raw)
+    return float(m.group(1)) if m else None
 
+
+def feature_tokens(text: str) -> list[str]:
     cleaned = re.sub(r"[^\w가-힣\s]", " ", (text or "").lower())
-    stop = {"에", "의", "을", "를", "이", "가", "은", "는", "과", "와", "및", "등", "있음", "없음", "한", "함"}
-    return [t for t in cleaned.split() if len(t) >= 2 and t not in stop]
+    out: list[str] = []
+    for t in cleaned.split():
+        if len(t) < 2 or t in STOPWORDS:
+            continue
+        out.append(FEATURE_SYNONYMS.get(t, t))
+    return out
