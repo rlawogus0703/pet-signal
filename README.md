@@ -4,6 +4,14 @@
 
 > 결과는 동일 개체로 단정하지 않습니다. 공고 원문(animal.go.kr)과 사진을 보호자·보호소가 직접 확인합니다.
 
+## 📊 성능평가 (Top-5)
+
+실제 보호소 공고 6,253건에서 가상 실종 신고 180건의 정답 공고를 찾게 한 결과, 상위 5개 안에 정답이 든 비율이
+**기존 조건 검색 7.2% → 펫 시그널 85.6%** (Top-1 3.3% → 71.1%) 였습니다. 합성 시험 문제라는 한계와 자세한 표·그래프는
+[`backend/eval/README.md`](backend/eval/README.md) 에 있고, `cd backend && python -m eval.run_eval` 한 줄로 다시 돌릴 수 있습니다.
+
+![난이도별 Top-5](backend/eval/results/top5_by_level.png)
+
 ## 🌐 라이브 데모
 
 - 웹: https://rlawogus0703.github.io/pet-signal/ (가까운 보호소 공고는 로그인 없이 볼 수 있고, 실종견 등록·매칭은 회원가입 또는 로그인이 필요해요)

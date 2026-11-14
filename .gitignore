@@ -14,3 +14,6 @@ __pycache__/
 .env
 backend/data/image_cache/
 backend/data/uploads/
+
+# 평가 캐시(사진·특징)
+backend/eval/cache/
