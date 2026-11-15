@@ -106,7 +106,7 @@ def test_nearby_and_register_without_photo(tmp_path):
         assert r.status_code == 200
         assert r.json()["shelter_phone"] == "02-111-1111"
 
-        # 사진 없이 등록 → 이미지 갈래 제외
+        # 사진 없이 등록 → 규칙 점수 100점으로 순위
         r = client.post("/api/v1/lost-dogs", json=dict(
             breed="말티즈", color="흰색", features="소형, 목걸이", age="3살",
             lost_date="2026-11-11", lost_lat=37.57, lost_lng=126.98, lost_address="서울 종로구",
@@ -120,8 +120,8 @@ def test_nearby_and_register_without_photo(tmp_path):
         top = items[0]
         assert top["notice_id"] == "N1"
         assert top["image_score"] is None
-        assert top["score"]["image_status"] == "no_user_photo"
-        assert top["rule_score"] is not None and top["text_score"] is not None
-        assert top["final_score"] == top["score"]["total"]
+        assert top["text_score"] is None
+        assert top["score"]["points"] == sum(it["points"] for it in top["score"]["items"])
+        assert top["final_score"] == top["score"]["total"] == top["score"]["points"] / 100
     finally:
         app.dependency_overrides.clear()

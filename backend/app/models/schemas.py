@@ -35,7 +35,22 @@ class LostDogOut(BaseModel):
     image_method: str | None = None
 
 
+class RuleItemOut(BaseModel):
+    key: str  # breed | color | region | features | date
+    label: str  # 품종 | 색상 | 지역 | 특징 | 날짜
+    points: int
+    max: int
+    reason: str
+
+
 class ScoreBreakdown(BaseModel):
+    # ── 규칙 점수 100점 (순위 기준, 김민재 앱과 같은 기준) ──
+    points: int | None = None  # 예: 65
+    max_points: int = 100
+    items: list[RuleItemOut] = Field(default_factory=list)  # 품종 30 · 색상 25 · 지역 20 · 특징 15 · 날짜 10
+    caption: str | None = None
+    note: str | None = None
+    # ── 아래는 예전 필드 (0~1). total = points / 100 ──
     # 규칙 기반 항목
     breed: float = 0
     color: float = 0

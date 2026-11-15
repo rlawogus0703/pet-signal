@@ -22,11 +22,11 @@ void main() {
     lostDate: DateTime.parse(d['lost_date']),
     lostLat: (d['lat'] as num).toDouble(),
     lostLng: (d['lng'] as num).toDouble(),
-    lostAddress: '',
+    lostAddress: d['address'] ?? '',
     createdAt: DateTime(2026, 11, 1),
   );
 
-  test('규칙·텍스트·멀티모달 점수가 서버와 같다', () {
+  test('규칙 점수 100점과 (예전) 규칙·텍스트·멀티모달 점수가 서버와 같다', () {
     final cases = fx['cases'] as List<dynamic>;
     for (var i = 0; i < cases.length; i++) {
       final c = cases[i] as Map<String, dynamic>;
@@ -42,7 +42,7 @@ void main() {
         foundDate: DateTime.parse(n['found_date']),
         foundLat: (n['lat'] as num?)?.toDouble(),
         foundLng: (n['lng'] as num?)?.toDouble(),
-        foundAddress: '',
+        foundAddress: n['address'] ?? '',
         shelterName: '',
         shelterPhone: '',
         noticeUrl: '',
@@ -68,10 +68,16 @@ void main() {
       eq('semantic', noPhoto.textSemantic);
       eq('attribute', noPhoto.textAttribute);
       eq('text', noPhoto.text);
-      eq('final_no_photo', noPhoto.total);
+      // 규칙 점수 100점 (순위 기준)
+      expect(noPhoto.points, e['points'], reason: 'case $i points');
+      expect([for (final it in noPhoto.items) it.points], e['point_items'], reason: 'case $i point_items');
+      expect(noPhoto.total, closeTo((e['points'] as num) / 100, 1e-9));
+      // 예전 멀티모달 공식 (순위에는 안 씀)
+      eq('final_no_photo', RuleScorer.finalScore(noPhoto.rule!, noPhoto.text, null));
       final img = (c['image'] as num?)?.toDouble();
       final withPhoto = RuleScorer().scoreOne(dog, notice, image: img, hasUserPhoto: true).score;
-      eq('final_with_photo', withPhoto.total);
+      eq('final_with_photo',
+          RuleScorer.finalScore(withPhoto.rule!, withPhoto.text, img ?? RuleScorer.missingImageNeutral));
     }
   });
 

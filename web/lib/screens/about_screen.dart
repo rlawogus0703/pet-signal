@@ -26,7 +26,7 @@ class AboutScreen extends StatelessWidget {
           _ProblemCard(Icons.map_outlined, '구조 장소 ≠ 실종 장소', '강아지가 다른 동네에서 구조되면 지역을 바꿔 가며 여러 번 찾아야 해요.',
               '실종 위치와의 실제 거리(km)로 점수를 매겨 지역 경계 없이 찾아요.'),
           _ProblemCard(Icons.translate_rounded, '서로 다른 표기', '“흰색 말티즈”가 공고에는 “크림색 믹스견”으로 올라오면 검색에서 빠져요.',
-              '품종·색상 표기를 정규화하고 사진·문장 AI 유사도로 후보를 놓치지 않아요.'),
+              '품종·색상 표기를 정규화하고, 일치 근거를 100점 규칙 점수로 합산해 후보를 보여줘요.'),
         ]),
         const SizedBox(height: Gap.xxl),
         const _NormalizationShowcase(),
@@ -36,7 +36,7 @@ class AboutScreen extends StatelessWidget {
         _Grid(narrow: narrow, columns: 4, children: const [
           _StepCard(1, Icons.edit_note_rounded, '실종견 등록', '사진, 품종, 색상, 나이, 실종 날짜·위치, 특징을 입력해요.'),
           _StepCard(2, Icons.cloud_sync_rounded, '공고 자동 수집', '농림축산검역본부 구조동물 API를 주기적으로 받아 표기를 통일해요.'),
-          _StepCard(3, Icons.auto_awesome_rounded, '멀티모달 매칭', '텍스트 알고리즘·사진 유사도를 규칙 점수와 함께 멀티모달로 융합해요.'),
+          _StepCard(3, Icons.rule_rounded, '규칙 점수 매칭', '품종 30 · 색상 25 · 지역 20 · 특징 15 · 날짜 10, 100점 만점으로 합산해요.'),
           _StepCard(4, Icons.notifications_active_rounded, '추천 이유·알림', '항목별 점수와 이유를 보여주고 새 후보를 알림으로 보내요.'),
         ]),
         const SizedBox(height: Gap.xxl),
@@ -106,7 +106,7 @@ class _AboutHeader extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           const Text(
-            '펫 시그널은 전국 보호소 공고를 매일 자동으로 모아, 등록한 실종견과 닮은 유사 후보를 순위대로 보여주고, 품종·색상·거리·날짜·사진까지 어떤 점이 닮았는지 이유를 함께 알려드려요.',
+            '펫 시그널은 전국 보호소 공고를 매일 자동으로 모아, 등록한 실종견과 닮은 유사 후보를 순위대로 보여주고, 품종·색상·지역·특징·날짜 중 어떤 점이 일치하는지 항목별 점수와 근거를 함께 알려드려요.',
             style: TextStyle(color: Color(0xFFC9D2E3), fontSize: 15.5, height: 1.65),
           ),
         ],
@@ -145,7 +145,7 @@ class _Stats extends StatelessWidget {
     return _Grid(narrow: false, columns: narrow ? 2 : 4, children: const [
       _Stat('95,685', '마리', '2025년 전국 동물보호센터에\n입소한 유실·유기동물', '농림축산식품부 2025 실태조사'),
       _Stat('매일', '', '공공데이터 API로\n보호소 공고 자동 수집', '농림축산검역본부 구조동물 API'),
-      _Stat('3', '갈래', '텍스트 · 이미지 AI 유사도\n+ 규칙 점수(품종·색상·거리·날짜·나이)', '멀티모달 융합 점수'),
+      _Stat('100', '점', '규칙 점수\n품종·색상·지역·특징·날짜', '앱·웹 같은 기준'),
       _Stat('Top 5', '', '상위 5개 후보 안에\n실제 강아지 포함 여부로 평가', '논문 평가 지표'),
     ]);
   }
@@ -329,8 +329,8 @@ class _TechStack extends StatelessWidget {
       ('FastAPI', '매칭 API 서버'),
       ('PostgreSQL', '공고·매칭 DB'),
       ('공공데이터 API', '구조동물 공고 수집'),
-      ('CLIP', '이미지 임베딩'),
-      ('Sentence-Transformers', '문장 임베딩'),
+      ('규칙 점수 엔진', '품종·색상·지역·특징·날짜 100점'),
+      ('Pillow', '목록용 작은 미리보기 사진'),
       ('FCM', '신규 후보 푸시 알림'),
     ];
     return Column(
@@ -377,7 +377,7 @@ class _Footer extends StatelessWidget {
   }
 }
 
-/// 시스템 구성도: 사용자 입력 → 실종견 DB + 공공데이터 API (Text/Image) → AI 유사도 매칭 → Multimodal → 매칭 추천
+/// 시스템 구성도: 사용자 입력 → 실종견 DB + 공공데이터 API → 일치 비교 → 규칙 점수 100점 → 매칭 추천
 class SystemDiagram extends StatelessWidget {
   const SystemDiagram({super.key});
 
@@ -395,10 +395,10 @@ class SystemDiagram extends StatelessWidget {
           Icons.edit_note_rounded,
           AppColors.navy,
           [
-            _pill('나이'),
-            _pill('지역'),
-            _pill('이미지'),
-            _pill('품종·색상·특징'),
+            _pill('품종·색상'),
+            _pill('실종 지역 (시군구)'),
+            _pill('실종일'),
+            _pill('특징 · 사진(비교용)'),
           ],
         ),
         _stage(
@@ -411,34 +411,36 @@ class SystemDiagram extends StatelessWidget {
             _box('공공데이터 API', '구조동물 공고 · 보호소 사진', Icons.cloud_download_outlined, AppColors.navy),
             const SizedBox(height: 4),
             Row(children: [
-              Expanded(child: _tag('Text 기반', _indigo)),
+              Expanded(child: _tag('품종·색상·특징', _indigo)),
               const SizedBox(width: 6),
-              Expanded(child: _tag('Image 기반', _sky)),
+              Expanded(child: _tag('시군구·접수일', _sky)),
             ]),
           ],
         ),
         _stage(
           '03',
-          'AI 유사도 매칭',
-          Icons.auto_awesome_rounded,
+          '일치 비교',
+          Icons.rule_rounded,
           _indigo,
           [
-            _box('텍스트 알고리즘', '키워드 · 문장 의미 · 속성/성향 분석', Icons.text_snippet_outlined, _indigo),
-            _box('이미지 유사도', '사진 임베딩 (CLIP / 색상·형태 특징)', Icons.image_search_rounded, _sky),
-            _box('규칙 점수', '품종 · 색상 · 거리 · 날짜 · 나이', Icons.rule_rounded, AppColors.subtext),
+            _box('품종 · 색상', '정규화한 품종이 같은지, 공통 색상이 있는지', Icons.pets_rounded, _indigo),
+            _box('지역 · 날짜', '시군구 표기가 같은지, 실종일 이후 구조 접수인지', Icons.place_outlined, _sky),
+            _box('특징', '보호자 설명과 공고 특징의 공통 단어', Icons.label_outline_rounded, AppColors.subtext),
           ],
         ),
         _stage(
           '04',
-          'Multimodal',
-          Icons.hub_outlined,
+          '규칙 점수 100점',
+          Icons.calculate_outlined,
           AppColors.coral,
           [
-            _weight('규칙', 0.45, AppColors.navy),
-            _weight('텍스트', 0.25, _indigo),
-            _weight('이미지', 0.30, _sky),
+            _weight('품종', 30, AppColors.navy),
+            _weight('색상', 25, _indigo),
+            _weight('지역', 20, _sky),
+            _weight('특징', 15, _indigo),
+            _weight('날짜', 10, AppColors.navy),
             const SizedBox(height: 4),
-            const Text('사진이 없으면 남은 갈래로 다시 계산',
+            const Text('일치 근거를 합산한 점수예요 (동일견일 확률 아님)',
                 style: TextStyle(fontSize: 11.5, color: AppColors.subtext)),
           ],
         ),
@@ -448,8 +450,8 @@ class SystemDiagram extends StatelessWidget {
           Icons.recommend_rounded,
           AppColors.coral,
           [
-            _box('유사 후보 순위', '최종 점수 높은 순', Icons.format_list_numbered_rounded, AppColors.coral),
-            _box('추천 이유', '항목별 점수 · 공통 특징 · 사진 비교', Icons.lightbulb_outline_rounded, AppColors.coral),
+            _box('유사 후보 순위', '규칙 점수 높은 순', Icons.format_list_numbered_rounded, AppColors.coral),
+            _box('점수 근거', '항목별 점수 · 한 줄 근거', Icons.lightbulb_outline_rounded, AppColors.coral),
             _box('신규 후보 알림', '새 공고가 들어오면 알림', Icons.notifications_active_outlined, AppColors.coral),
           ],
         ),
@@ -554,19 +556,19 @@ class SystemDiagram extends StatelessWidget {
         child: Text(t, style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: color)),
       );
 
-  Widget _weight(String label, double w, Color color) => Column(
+  Widget _weight(String label, int pts, Color color) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(children: [
             Text(label, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
             const Spacer(),
-            Text('${(w * 100).round()}%', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: color)),
+            Text('$pts점', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: color)),
           ]),
           const SizedBox(height: 4),
           ClipRRect(
             borderRadius: BorderRadius.circular(99),
             child: LinearProgressIndicator(
-              value: w / 0.45,
+              value: pts / 30,
               minHeight: 7,
               color: color,
               backgroundColor: color.withValues(alpha: 0.12),

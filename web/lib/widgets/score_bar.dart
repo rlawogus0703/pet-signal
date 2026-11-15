@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../matching/explain.dart';
+import '../models/score_breakdown.dart';
 import '../theme/app_theme.dart';
 
 /// 항목별 점수 막대 (순차 애니메이션)
@@ -62,11 +63,14 @@ class ScoreBar extends StatelessWidget {
 }
 
 class _DelayedBar extends StatefulWidget {
-  const _DelayedBar({required this.value, required this.color, required this.delay, this.height = 10});
+  const _DelayedBar(
+      {required this.value, required this.color, required this.delay, this.height = 10, this.track, this.flat = false});
   final double value;
   final Color color;
   final Duration delay;
   final double height;
+  final Color? track;
+  final bool flat;
 
   @override
   State<_DelayedBar> createState() => _DelayedBarState();
@@ -93,13 +97,14 @@ class _DelayedBarState extends State<_DelayedBar> {
         borderRadius: BorderRadius.circular(99),
         child: Stack(
           children: [
-            Container(height: widget.height, color: widget.color.withValues(alpha: 0.12)),
+            Container(height: widget.height, color: widget.track ?? widget.color.withValues(alpha: 0.12)),
             FractionallySizedBox(
               widthFactor: v,
               child: Container(
                 height: widget.height,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [widget.color.withValues(alpha: 0.75), widget.color]),
+                  color: widget.flat ? widget.color : null,
+                  gradient: widget.flat ? null : LinearGradient(colors: [widget.color.withValues(alpha: 0.75), widget.color]),
                   borderRadius: BorderRadius.circular(99),
                 ),
               ),
@@ -112,62 +117,74 @@ class _DelayedBarState extends State<_DelayedBar> {
 }
 
 
-/// 교수님 구성도 세 갈래 막대: 텍스트 / 이미지 / 멀티모달 최종 (카드·상세 공용)
-class BranchBars extends StatelessWidget {
-  const BranchBars({super.key, required this.items, this.compact = false});
-  final List<ScoreItem> items;
-  final bool compact;
+/// 규칙 점수 색 (김민재 앱처럼 짙은 청록)
+const ruleTeal = Color(0xFF0F6E62);
+const ruleTealSoft = Color(0xFFD5ECE7);
 
-  static const colors = [Color(0xFF6366F1), Color(0xFF0EA5E9), AppColors.coral];
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        for (var i = 0; i < items.length; i++)
-          compact
-              ? _MiniBar(item: items[i], color: colors[i % colors.length], delay: Duration(milliseconds: 100 + i * 120))
-              : ScoreBar(
-                  item: items[i],
-                  color: colors[i % colors.length],
-                  labelWidth: 120,
-                  delay: Duration(milliseconds: 100 + i * 120)),
-      ],
-    );
-  }
-}
-
-class _MiniBar extends StatelessWidget {
-  const _MiniBar({required this.item, required this.color, required this.delay});
-  final ScoreItem item;
-  final Color color;
+/// 상세 화면: 항목 카드 (이름 · NN/MM점 · 막대 · 한 줄 근거) — 김민재 앱 상세 화면과 같은 구성
+class RulePointRow extends StatelessWidget {
+  const RulePointRow({super.key, required this.item, this.delay = Duration.zero});
+  final RuleItem item;
   final Duration delay;
 
   @override
   Widget build(BuildContext context) {
-    final v = item.value;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(children: [
-        SizedBox(
-          width: 78,
-          child: Text(item.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.subtext)),
-        ),
-        Expanded(
-          child: v == null
-              ? Text(item.note ?? '-', style: const TextStyle(fontSize: 11.5, color: AppColors.subtext))
-              : SizedBox(height: 7, child: _DelayedBar(value: v, color: color, delay: delay, height: 7)),
-        ),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 26,
-          child: Text(v == null ? '-' : '${(v * 100).round()}',
-              textAlign: TextAlign.right, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
-        ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F8F7),
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 4, offset: Offset(0, 1))],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Text(item.label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+          const Spacer(),
+          Text('${item.points}/${item.max}점', style: const TextStyle(fontSize: 14.5, color: AppColors.text)),
+        ]),
+        const SizedBox(height: 8),
+        _DelayedBar(value: item.fraction, color: ruleTeal, delay: delay, height: 4, track: ruleTealSoft, flat: true),
+        const SizedBox(height: 10),
+        Text(item.reason, style: const TextStyle(fontSize: 14, color: AppColors.text)),
       ]),
     );
+  }
+}
+
+/// 목록 카드: 다섯 항목 작은 막대 (이름 · 막대 · NN/MM)
+class RulePointsMini extends StatelessWidget {
+  const RulePointsMini({super.key, required this.items});
+  final List<RuleItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(children: [
+      for (var i = 0; i < items.length; i++)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: Row(children: [
+            SizedBox(
+              width: 40,
+              child: Text(items[i].label,
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.subtext)),
+            ),
+            Expanded(
+              child: _DelayedBar(
+                  value: items[i].fraction,
+                  color: ruleTeal,
+                  delay: Duration(milliseconds: 100 + i * 100),
+                  height: 6,
+                  track: ruleTealSoft),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 42,
+              child: Text('${items[i].points}/${items[i].max}',
+                  textAlign: TextAlign.right, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+            ),
+          ]),
+        ),
+    ]);
   }
 }

@@ -6,7 +6,8 @@
   "age": "3살",
   "lost_date": "2026-11-01",
   "lat": 37.1934,
-  "lng": 127.0225
+  "lng": 127.0225,
+  "address": "경기도 오산시 양산동"
  },
  "cases": [
   {
@@ -18,10 +19,19 @@
     "found_date": "2026-11-02",
     "lat": 37.1499,
     "lng": 127.0697,
+    "address": "경기도 오산시 원동",
     "weight": ""
    },
    "image": 0.8,
    "expected": {
+    "points": 45,
+    "point_items": [
+     0,
+     0,
+     20,
+     15,
+     10
+    ],
     "breed": 0.6,
     "color": 0.85,
     "distance": 0.7,
@@ -45,10 +55,19 @@
     "found_date": "2026-11-03",
     "lat": 37.2167,
     "lng": 126.9487,
+    "address": "경기도 화성시 봉담읍",
     "weight": ""
    },
    "image": null,
    "expected": {
+    "points": 80,
+    "point_items": [
+     30,
+     25,
+     0,
+     15,
+     10
+    ],
     "breed": 1.0,
     "color": 1.0,
     "distance": 0.7,
@@ -72,10 +91,19 @@
     "found_date": "2026-10-25",
     "lat": 37.008,
     "lng": 127.2797,
+    "address": "경기도 오산시 세교동",
     "weight": ""
    },
    "image": 0.3,
    "expected": {
+    "points": 35,
+    "point_items": [
+     0,
+     0,
+     20,
+     15,
+     0
+    ],
     "breed": 0.0,
     "color": 0.0,
     "distance": 0.25,
@@ -99,10 +127,19 @@
     "found_date": "2026-11-05",
     "lat": 37.4135,
     "lng": 127.1267,
+    "address": "경기도 성남시 상적동",
     "weight": "12(Kg)"
    },
    "image": null,
    "expected": {
+    "points": 50,
+    "point_items": [
+     0,
+     25,
+     0,
+     15,
+     10
+    ],
     "breed": 0.6,
     "color": 0.9,
     "distance": 0.45,
@@ -126,10 +163,19 @@
     "found_date": "2026-11-14",
     "lat": 35.8242,
     "lng": 127.148,
+    "address": "전북특별자치도 전주시 완산구",
     "weight": "4.1(Kg)"
    },
    "image": 0.55,
    "expected": {
+    "points": 35,
+    "point_items": [
+     0,
+     25,
+     0,
+     0,
+     10
+    ],
     "breed": 0.0,
     "color": 0.9,
     "distance": 0.05,
@@ -153,10 +199,19 @@
     "found_date": "2026-11-01",
     "lat": null,
     "lng": null,
+    "address": "",
     "weight": ""
    },
    "image": null,
    "expected": {
+    "points": 10,
+    "point_items": [
+     0,
+     0,
+     0,
+     0,
+     10
+    ],
     "breed": 0.0,
     "color": 0.0,
     "distance": 0.25,

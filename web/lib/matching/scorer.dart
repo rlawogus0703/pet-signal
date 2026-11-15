@@ -5,11 +5,17 @@ import '../models/lost_dog.dart';
 import '../models/notice.dart';
 import '../models/score_breakdown.dart';
 import 'normalizer.dart';
+import 'rule_points.dart';
 import 'text_similarity.dart';
 
-/// 멀티모달 유사도 스코어러 (웹 오프라인 데모용)
+/// 매칭 스코어러 (웹 오프라인 데모용)
 ///
-/// 서버(backend/app/services/matcher.py + app/ai/fusion.py)와 같은 공식·가중치입니다.
+/// 순위 = 규칙 점수 100점 (김민재 앱 · 서버와 같은 기준, rule_points.dart):
+///   품종 30 · 색상 25 · 지역 20 · 특징 15 · 날짜 10. 같은 점수면 최근 접수 순.
+///   score.total = points / 100.
+///
+/// 아래 멀티모달 공식은 성능평가·서버 일치 테스트용으로 남겨 두었고 순위에는 쓰지 않습니다.
+/// (서버 backend/app/services/matcher.py + app/ai/fusion.py 와 같은 공식·가중치)
 ///   rule  = 품종 0.25 · 색상 0.25 · 거리 0.25 · 날짜 0.15 · 나이 0.10
 ///   text  = 키워드 0.4 · 문장 의미 0.4 · 속성/성향 0.2
 ///   image = 사진 특징 유사도 (색상 히스토그램 + dHash)
@@ -41,7 +47,10 @@ class RuleScorer {
       for (final n in notices)
         scoreOne(dog, n, image: imageScores?[n.noticeId], hasUserPhoto: hasUserPhoto && imageScores != null)
     ];
-    scored.sort((a, b) => b.score.total.compareTo(a.score.total));
+    scored.sort((a, b) {
+      final byPoints = b.score.displayPoints.compareTo(a.score.displayPoints);
+      return byPoints != 0 ? byPoints : b.foundDate.compareTo(a.foundDate);
+    });
     return [for (var i = 0; i < scored.length; i++) scored[i].withRank(i + 1)];
   }
 
@@ -81,35 +90,21 @@ class RuleScorer {
 
     final img = hasUserPhoto ? image : null;
     final status = img != null ? 'ok' : (hasUserPhoto ? 'no_notice_photo' : 'no_user_photo');
-    final total = finalScore(rule, tr.score, img ?? (hasUserPhoto ? missingImageNeutral : null));
-
-    String f2(double v) => v.toStringAsFixed(2);
-    final reasons = <String>[];
-    if (breed >= 0.99) {
-      reasons.add('품종 일치 (${dog.breed} ↔ ${n.breed})');
-    } else if (breed >= 0.5) {
-      reasons.add('품종 유사 (${dog.breed} ↔ ${n.breed})');
-    }
-    if (color >= 0.99) {
-      reasons.add('색상 일치 (${dog.color} ↔ ${n.color})');
-    } else if (color >= 0.5) {
-      reasons.add('색상 유사 (${dog.color} ↔ ${n.color})');
-    }
-    if (distance >= 0.5) reasons.add('실종 지점과 약 ${distKm.toStringAsFixed(1)}km');
-    if (date >= 0.5) reasons.add('날짜 차이 ${dayDiff.abs()}일');
-    if (age >= 0.5) reasons.add('나이 유사 (${dog.age ?? '-'} ↔ ${n.age ?? '-'})');
-    if (tr.commonKeywords.isNotEmpty) reasons.add('공통 특징 키워드: ${tr.commonKeywords.take(5).join(', ')}');
-    if (tr.matchedAttributes.isNotEmpty) reasons.add('문장 속성 일치: ${tr.matchedAttributes.join(', ')}');
-    reasons.add('설명 텍스트 유사도 ${f2(tr.score)} (키워드 ${f2(tr.keyword)} · 문장 의미 ${f2(tr.semantic)} · 속성 '
-        '${tr.attribute == null ? '-' : f2(tr.attribute!)})');
-    if (img != null) {
-      reasons.add('사진 유사도 ${f2(img)}');
-    } else if (status == 'no_user_photo') {
-      reasons.add('사진 미등록: 이미지 점수 제외');
-    } else {
-      reasons.add('공고 사진이 없어 이미지 점수는 중립값 ${f2(missingImageNeutral)} 적용');
-    }
-    reasons.add('멀티모달 최종 ${f2(total)} (규칙 ${f2(rule)} · 텍스트 ${f2(tr.score)} · 이미지 ${img == null ? '-' : f2(img)})');
+    final items = RulePoints.compute(
+      dogBreed: dog.breed,
+      dogColor: dog.color,
+      dogFeatures: dog.features,
+      dogDate: dog.lostDate,
+      dogRegion: RulePoints.regionKey(dog.lostAddress),
+      noticeBreed: n.breed,
+      noticeColor: n.color,
+      noticeFeatures: n.features,
+      noticeDate: n.foundDate,
+      noticeRegion: RulePoints.regionKey(n.foundAddress),
+    );
+    final points = RulePoints.total(items);
+    final total = points / RulePoints.maxPoints;
+    final reasons = [for (final it in items) '${it.label} ${it.points}/${it.max}점 · ${it.reason}'];
 
     return Candidate(
       noticeId: n.noticeId,
@@ -131,6 +126,8 @@ class RuleScorer {
       noticeEnd: n.noticeEnd,
       weight: n.weight,
       score: ScoreBreakdown(
+        points: points,
+        items: items,
         breed: breed,
         color: color,
         distance: distance,

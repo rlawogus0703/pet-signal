@@ -21,12 +21,13 @@ from app.models.schemas import (
     LostDogOut,
     NotificationListOut,
     NotificationOut,
+    RuleItemOut,
     ScoreBreakdown,
     NearbyNoticeOut,
     NearbyNoticeListOut,
 )
 from app.ai import image_embedder, text_similarity
-from app.ai.fusion import MODAL_WEIGHTS, RULE_WEIGHTS
+from app.services.rule_points import CAPTION, MAX_POINTS, NOTE, RULE_LABELS, RULE_POINTS
 from app.config import get_settings
 from app.services.collect_lock import acquire_collect_lock, release_collect_lock
 from app.services.collector import collect_notices
@@ -65,6 +66,7 @@ def _dog_out(row: LostDogRow) -> LostDogOut:
 
 def _candidate_out(match: MatchResultRow, notice: NoticeRow, rank: int) -> CandidateOut:
     d = match.detail()
+    rp = d.get("rule_points") or {}
     has_photo = bool(notice.photo_url or notice.photo_local)
     nid = notice.notice_id
     return CandidateOut(
@@ -83,6 +85,11 @@ def _candidate_out(match: MatchResultRow, notice: NoticeRow, rank: int) -> Candi
         shelter_phone=notice.shelter_phone or "",
         notice_url=notice.notice_url or "",
         score=ScoreBreakdown(
+            points=rp.get("total"),
+            max_points=rp.get("max") or MAX_POINTS,
+            items=[RuleItemOut(**it) for it in rp.get("items") or []],
+            caption=CAPTION if rp else None,
+            note=NOTE if rp else None,
             breed=match.score_breed,
             color=match.score_color,
             distance=match.score_distance,
@@ -220,21 +227,17 @@ def list_candidates(
     dog = db.get(LostDogRow, lost_dog_id)
     if not dog:
         raise HTTPException(404, "lost dog not found")
-    matches = db.scalars(
+    q = (
         select(MatchResultRow)
         .where(MatchResultRow.lost_dog_id == lost_dog_id)
-        .order_by(MatchResultRow.score_total.desc())
+        .order_by(MatchResultRow.score_total.desc(), MatchResultRow.id.asc())
         .limit(limit)
-    ).all()
-    # 매칭 결과가 없으면 즉시 계산
-    if not matches:
+    )
+    matches = db.scalars(q).all()
+    # 매칭 결과가 없거나 예전 방식(규칙 점수 100점 이전)으로 저장돼 있으면 다시 계산
+    if not matches or not _has_rule_points(matches[0]):
         rematch_lost_dog(db, lost_dog_id)
-        matches = db.scalars(
-            select(MatchResultRow)
-            .where(MatchResultRow.lost_dog_id == lost_dog_id)
-            .order_by(MatchResultRow.score_total.desc())
-            .limit(limit)
-        ).all()
+        matches = db.scalars(q).all()
 
     items: list[CandidateOut] = []
     for i, m in enumerate(matches, start=1):
@@ -245,30 +248,43 @@ def list_candidates(
     return CandidateListOut(lost_dog_id=lost_dog_id, total=len(items), items=items)
 
 
+def _has_rule_points(match: MatchResultRow) -> bool:
+    return bool(match.detail().get("rule_points"))
+
+
 @router.get(
     "/lost-dogs/{lost_dog_id}/candidates/{notice_id}",
     response_model=CandidateOut,
 )
 def candidate_detail(lost_dog_id: str, notice_id: str, db: Session = Depends(get_db)):
-    match = db.scalars(
-        select(MatchResultRow).where(
-            MatchResultRow.lost_dog_id == lost_dog_id,
-            MatchResultRow.notice_id == notice_id,
-        )
-    ).first()
+    def find():
+        return db.scalars(
+            select(MatchResultRow).where(
+                MatchResultRow.lost_dog_id == lost_dog_id,
+                MatchResultRow.notice_id == notice_id,
+            )
+        ).first()
+
+    match = find()
+    if match and not _has_rule_points(match):
+        rematch_lost_dog(db, lost_dog_id)
+        match = find()
     if not match:
         raise HTTPException(404, "candidate not found")
     notice = db.get(NoticeRow, notice_id)
     if not notice:
         raise HTTPException(404, "notice not found")
-    # rank 계산
-    better = db.scalars(
-        select(MatchResultRow).where(
+    # rank 계산 (목록과 같은 순서: 점수 높은 순, 같으면 저장 순서)
+    better = db.scalar(
+        select(func.count()).where(
             MatchResultRow.lost_dog_id == lost_dog_id,
-            MatchResultRow.score_total > match.score_total,
+            or_(
+                MatchResultRow.score_total > match.score_total,
+                (MatchResultRow.score_total == match.score_total) & (MatchResultRow.id < match.id),
+            ),
         )
-    ).all()
-    rank = len(list(better)) + 1
+    ) or 0
+    rank = better + 1
     return _candidate_out(match, notice, rank)
 
 
@@ -490,9 +506,11 @@ def system_info(db: Session = Depends(get_db)):
                 "weights": text_similarity.TEXT_WEIGHTS,
                 "semantic_method": text_similarity.semantic_method(),
             },
-            "image_branch": {"method": image_embedder.current_method()},
-            "rule_weights": RULE_WEIGHTS,
-            "fusion_weights": MODAL_WEIGHTS,
+            "image_branch": {"method": image_embedder.current_method(), "used_for_ranking": False},
+            "ranking": "규칙 점수 100점 (김민재 앱과 같은 기준)",
+            "rule_points": RULE_POINTS,
+            "rule_labels": RULE_LABELS,
+            "max_points": MAX_POINTS,
             "output": "실종견 매칭 추천 (유사 후보 + 이유)",
         },
     }

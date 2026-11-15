@@ -1,26 +1,27 @@
-"""실종견 등록 시 매칭 결과·알림 생성 (교수님 피드백 구성도 그대로).
+"""실종견 등록 시 매칭 결과·알림 생성.
 
-  사용자 입력 ─┬─ 텍스트 데이터 → 텍스트 알고리즘(키워드 + 문장 의미 + 속성/성향) ─┐
-               └─ 이미지 데이터 → 사진 임베딩 유사도 ─────────────────────────────┼→ 멀티모달 융합 → 매칭 추천
-  실종견 DB + 공공데이터 API ─(규칙: 품종·색상·거리·날짜·나이)──────────────────┘
+순위 = 규칙 점수 100점 (김민재 앱과 같은 기준, app/services/rule_points.py)
+  품종 30 · 색상 25 · 지역(시군구 표기) 20 · 특징(공통 단어) 15 · 날짜(실종일 이후 접수) 10
+같은 점수면 최근에 구조 접수된 공고가 먼저 옵니다.
+텍스트·사진 유사도는 순위에 쓰지 않습니다 (사진 임베딩은 즉석으로 받지 않음).
 """
 
 from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, defer
 
-from app.ai import image_embedder, text_embedder, text_similarity
-from app.ai.fusion import MODAL_WEIGHTS
+from app.ai import text_embedder, text_similarity
 from app.config import get_settings
 from app.models.db_models import LostDogRow, MatchResultRow, NoticeRow, NotificationRow
-from app.services.image_index import embed_notices, ensure_dog_image_embedding, notice_embedding
+from app.services.image_index import ensure_dog_image_embedding
 from app.services.notice_state import STALE_STATE
 from app.services.matcher import MatchScore, dumps_emb, loads_emb, score_pair
+from app.services.rule_points import MAX_POINTS, RULE_POINTS, notice_region, region_key
 
 
 def _now():
@@ -34,11 +35,8 @@ def ensure_dog_embeddings(dog: LostDogRow) -> None:
     ensure_dog_image_embedding(dog)
 
 
-def _score(dog: LostDogRow, n: NoticeRow, dog_text, dog_img, method: str) -> MatchScore:
-    n_img = notice_embedding(n, method) if dog_img is not None else None
-    status = None
-    if dog_img is not None and n_img is None:
-        status = "no_notice_photo" if not (n.photo_url or n.photo_local) else "fetch_failed"
+def _score(dog: LostDogRow, n: NoticeRow, dog_text, dog_region: str | None) -> MatchScore:
+    """규칙 점수 100점 계산 (사진 유사도는 계산하지 않음)."""
     return score_pair(
         dog_breed=dog.breed,
         dog_color=dog.color,
@@ -48,19 +46,20 @@ def _score(dog: LostDogRow, n: NoticeRow, dog_text, dog_img, method: str) -> Mat
         dog_lat=dog.lost_lat,
         dog_lng=dog.lost_lng,
         dog_text_emb=dog_text,
-        dog_image_emb=dog_img,
+        dog_image_emb=None,
         notice_breed=n.breed,
         notice_color=n.color,
         notice_features=n.features,
         notice_age=n.age,
-        notice_date=n.found_date,
+        notice_date=n.found_date or n.notice_start,
         notice_lat=n.found_lat,
         notice_lng=n.found_lng,
         notice_text_emb=loads_emb(n.text_embedding_json),
-        notice_image_emb=n_img,
+        notice_image_emb=None,
         notice_weight=n.weight,
-        image_method=method,
-        image_status=status,
+        image_status="not_used",
+        dog_region=dog_region,
+        notice_region=notice_region(n.org_nm, n.found_address),
     )
 
 
@@ -77,7 +76,8 @@ def detail_of(ms: MatchScore) -> dict:
         "matched_attributes": ms.matched_attributes,
         "dist_km": round(ms.dist_km, 2),
         "day_diff": ms.day_diff,
-        "weights": MODAL_WEIGHTS,
+        "rule_points": ms.points.as_dict() if ms.points else None,
+        "weights": RULE_POINTS,
     }
 
 
@@ -113,56 +113,52 @@ def rematch_lost_dog(db: Session, lost_dog_id: str) -> list[MatchResultRow]:
         db.delete(old)
     db.flush()
 
-    method = image_embedder.current_method()
     dog_text = loads_emb(dog.text_embedding_json)
-    dog_img = loads_emb(dog.image_embedding_json) if dog.image_embed_method == method else None
+    dog_region = region_key(dog.lost_address)
 
-    # 1차: 모든 공고 점수 (이미 계산된 사진 임베딩만 사용)
-    # notice_id 를 미리 꺼내 둡니다: 아래 사진 임베딩 커밋 뒤 수천 개 객체가 만료돼
-    # 건마다 DB 를 다시 읽는 일을 막기 위해서입니다.
-    scored = [(n.notice_id, n, _score(dog, n, dog_text, dog_img, method)) for n in notices]
-    scored.sort(key=lambda x: x[2].total, reverse=True)
-
-    # 2차: 사용자 사진이 있으면, 상위 K개 중 사진 임베딩이 없는 공고만 즉석으로 받아서 다시 계산
-    if dog_img is not None:
-        k = get_settings().match_image_top_k
-        top = [n for _, n, _ in scored[:k]]
-        embed_notices(db, top)
-        scored[:k] = [(nid, n, _score(dog, n, dog_text, dog_img, method)) for nid, n, _ in scored[:k]]
-        scored.sort(key=lambda x: x[2].total, reverse=True)
+    # 모든 공고를 규칙 점수 100점으로 계산 → 점수 높은 순, 같으면 최근 접수 순
+    # notice_id 를 미리 꺼내 둡니다 (커밋 뒤 객체 만료로 건마다 DB 를 다시 읽는 일 방지).
+    scored = [(n.notice_id, n, _score(dog, n, dog_text, dog_region)) for n in notices]
+    scored.sort(
+        key=lambda x: (x[2].points.total, (x[1].found_date or x[1].notice_start or date.min).toordinal()),
+        reverse=True,
+    )
 
     # 공고가 수천 건이라 점수 상위 N개만 저장 (화면은 최대 100개까지 보여줌)
     scored = scored[: max(1, get_settings().match_store_top)]
 
     results: list[MatchResultRow] = []
     for nid, _n, ms in scored:
+        pts = ms.points
         row = MatchResultRow(
             lost_dog_id=lost_dog_id,
             notice_id=nid,
-            score_breed=ms.breed,
-            score_color=ms.color,
-            score_distance=ms.distance,
-            score_date=ms.date,
-            score_features=ms.features,
+            # 항목별 값은 0~1 (받은 점수 / 만점). distance 칸에는 지역(시군구) 점수를 넣습니다.
+            score_breed=pts.fraction("breed"),
+            score_color=pts.fraction("color"),
+            score_distance=pts.fraction("region"),
+            score_date=pts.fraction("date"),
+            score_features=pts.fraction("features"),
             score_age=ms.age,
-            score_image=ms.image,
-            score_text=ms.text,
-            score_rule=ms.rule,
-            score_total=ms.total,
-            reasons_json=json.dumps(ms.reasons, ensure_ascii=False),
+            score_image=None,
+            score_text=None,
+            score_rule=pts.total / MAX_POINTS,
+            score_total=pts.total / MAX_POINTS,
+            reasons_json=json.dumps(
+                [f"{i.label} {i.points}/{i.max}점 · {i.reason}" for i in pts.items], ensure_ascii=False
+            ),
             detail_json=json.dumps(detail_of(ms), ensure_ascii=False),
             created_at=_now(),
         )
         db.add(row)
         results.append(row)
 
-    results.sort(key=lambda r: r.score_total, reverse=True)
     if results:
         top = results[0]
         notice = db.get(NoticeRow, top.notice_id)
         body = (
             f"{(notice.color if notice else '')} {(notice.breed if notice else '')} "
-            f"공고가 유사 후보로 추가되었습니다. (총점 {top.score_total:.2f})"
+            f"공고가 유사 후보로 추가되었습니다. (규칙 점수 {round(top.score_total * MAX_POINTS)}/{MAX_POINTS})"
         )
         db.add(
             NotificationRow(

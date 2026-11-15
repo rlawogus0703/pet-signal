@@ -235,7 +235,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SectionTitle('사진과 기본 정보', step: 1, subtitle: '사진이 없어도 등록할 수 있어요. 사진이 있으면 이미지 유사도도 함께 계산해요.'),
+        const SectionTitle('사진과 기본 정보', step: 1, subtitle: '사진이 없어도 등록할 수 있어요. 사진은 후보와 눈으로 비교할 때 쓰여요.'),
         const SizedBox(height: 20),
         if (narrow) ...[photo, const SizedBox(height: 16), fields]
         else
@@ -368,7 +368,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SectionTitle('특징', step: 3, subtitle: '특징 키워드와 문장 유사도(AI) 계산에 쓰여요.'),
+        const SectionTitle('특징', step: 3, subtitle: '공고 특징과 겹치는 단어가 있으면 특징 점수(15점)를 받아요.'),
         const SizedBox(height: 20),
         TextFormField(
           controller: _features,

@@ -29,7 +29,20 @@
 | lost_address | string | 주소 텍스트 |
 | created_at | string (ISO8601) | 등록 시각 |
 
-### ScoreBreakdown (항목별 점수, 0~1)
+### ScoreBreakdown (규칙 점수 100점 + 예전 필드)
+
+순위 기준은 **규칙 점수 100점** (민재 앱과 같은 기준). 일치 근거를 합산한 점수이며 동일견일 확률이 아닙니다.
+
+| 필드 | 설명 |
+|------|------|
+| points | 규칙 점수 (0~100, 예: 65) |
+| max_points | 100 |
+| items | `[{key, label, points, max, reason}]` 다섯 개: breed 품종 30 · color 색상 25 · region 지역 20 · features 특징 15 · date 날짜 10. 예: `{"key":"color","label":"색상","points":25,"max":25,"reason":"공통 색상: 흰색"}` |
+| caption | `일치 근거를 합산한 점수이며, 동일견일 확률이 아니에요.` |
+| note | `지역은 시군구 표기를 비교해요. 실제 거리와 사진 유사도는 계산하지 않아요. 구조 접수일은 실제 발견일과 다를 수 있어요.` |
+| total | points / 100 (0~1) |
+
+아래는 예전 필드입니다 (0~1). breed/color/date/features 는 받은 점수/만점, distance 칸에는 지역 점수(0 또는 1)가 들어갑니다. text/image 는 순위에 쓰지 않아 null 입니다.
 
 | 필드 | 설명 |
 |------|------|
@@ -42,7 +55,6 @@
 | image | 사진 유사도 (사진이 없으면 null) |
 | image_method | `clip` 또는 `color-hist+dhash` |
 | image_status | `ok` · `no_user_photo` · `no_notice_photo` · `fetch_failed` |
-| total | 멀티모달 최종 = 규칙 0.45 + 텍스트 0.25 + 이미지 0.30 (사용자 사진 없으면 이미지 제외 후 재분배, 공고 사진만 없으면 이미지 0.40 중립값) |
 
 ### Candidate (유사 후보)
 
@@ -62,9 +74,9 @@
 | shelter_phone | string | 보호소 전화 |
 | notice_url | string | animal.go.kr 원문 링크 |
 | score | ScoreBreakdown | 항목별·총점 |
-| reasons | string[] | 한국어 추천 이유 |
+| reasons | string[] | 항목별 한 줄 근거 (예: `품종 30/30점 · 일치 (포메라니안)`) |
 | rank | int | 순위 (1부터) |
-| rule_score / text_score / image_score / final_score | number | 세 갈래 + 최종 (score 안의 rule/text/image/total 과 동일) |
+| rule_score / final_score | number | 규칙 점수 / 100 (text_score·image_score 는 null) |
 | source | string | `seed`(예시) 또는 `animal_api`(공공 API) |
 | photo_url2 | string \| null | 두 번째 공고 사진 (popfile2) |
 | photo_proxy_url / photo2_proxy_url | string \| null | 서버 경유 사진 경로 (웹 CORS 회피, base URL 뒤에 붙여 사용) |
@@ -283,23 +295,24 @@ Header: `Authorization: Bearer <token>`
 - `POST /api/v1/admin/collect?embed_images=true` — 공공 API 수집 (`SERVICE_KEY` 필요, `X-Admin-Key` 필수). 기본은 전국 공고중 전부 + 보호중 최근 90일 (1000건 × 페이지 끝까지), 사진 임베딩은 최대 3,000장씩 이어서 계산. 이미 수집이 돌고 있으면 409. 시작·예약 수집은 키 없이 서버 안에서 그대로 동작합니다.
 - `GET /api/v1/notices/{notice_id}/photo?n=1|2` — 공고 사진 (서버 캐시 경유, CORS 허용). `size=thumb` 또는 `w=`(64–800) 이면 긴 변을 줄인 JPEG 미리보기
 - `GET /api/v1/lost-dogs/{id}/photo` — 보호자가 올린 사진. 같은 `size`/`w` 미리보기 파라미터를 쓸 수 있습니다
-- `GET /api/v1/system` — 모드(api/sample), 공고 수, 사진 임베딩 수, 텍스트·이미지 방식, 가중치
+- `GET /api/v1/system` — 모드(api/sample), 공고 수, 사진 임베딩 수, 텍스트·이미지 방식, 규칙 점수 배점(`pipeline.rule_points`)
   - 엔드포인트: `https://apis.data.go.kr/1543061/abandonmentPublicService_v2/abandonmentPublic_v2`
   - 포털: https://www.data.go.kr/data/15098931/openapi.do
 
 ---
 
-## 점수 융합 (멀티모달)
+## 매칭 점수 (규칙 점수 100점, 민재 앱과 같은 기준)
 
 ```
-final = rule × 0.45 + text × 0.25 + image × 0.30
-rule  = breed 0.25 + color 0.25 + distance 0.25 + date 0.15 + age 0.10
-text  = keyword 0.4 + semantic 0.4 + attribute 0.2   (attribute 없으면 재분배)
+points = 품종 30 + 색상 25 + 지역 20 + 특징 15 + 날짜 10   (항목마다 만점 또는 0점)
 ```
 
-- 사용자 사진이 없으면 image 를 빼고 남은 가중치로 다시 나눕니다.
-- 사용자 사진은 있는데 공고 사진이 없거나 받지 못하면 image 에 중립값 0.40 을 넣습니다 (`image` 필드는 null).
-- 웹 Mock 모드도 같은 공식을 씁니다 (`web/lib/matching/scorer.dart`).
+- 품종: 정규화한 품종이 같음 / 색상: 공통 색상이 있음 / 지역: 시·도+시·군·구 표기가 같음 (실종 위치 ↔ 공고 orgNm, 없으면 발견 장소)
+- 특징: 보호자 설명과 공고 특징의 공통 단어 / 날짜: 실종일 당일 또는 이후 구조 접수
+- 점수 높은 순, 같으면 최근 접수 순. 실제 거리·사진 유사도는 계산하지 않습니다.
+- 예전 방식으로 저장된 매칭 결과는 후보 목록·상세를 열 때 자동으로 다시 계산합니다.
+- 웹 Mock 모드도 같은 기준을 씁니다 (`web/lib/matching/rule_points.dart`).
+- 예전 멀티모달 공식(`backend/app/ai/fusion.py`)은 성능평가용으로 남아 있고 순위에는 쓰지 않습니다.
 
 ---
 

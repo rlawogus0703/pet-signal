@@ -1,4 +1,9 @@
-"""규칙 기반 + AI 멀티모달 매칭."""
+"""매칭 점수.
+
+순위는 규칙 점수 100점(app/services/rule_points.py, 김민재 앱과 같은 기준: 품종 30 · 색상 25 ·
+지역 20 · 특징 15 · 날짜 10)으로 정합니다. 아래의 규칙(0~1)·텍스트·사진 멀티모달 점수 코드는
+성능평가(backend/eval)용으로 남겨 두었고 순위에는 쓰지 않습니다.
+"""
 
 from __future__ import annotations
 
@@ -9,6 +14,7 @@ from datetime import date, datetime
 
 from app.ai import image_embedder, text_similarity
 from app.ai.fusion import MISSING_IMAGE_NEUTRAL, final_score, rule_score
+from app.services.rule_points import RulePoints, compute_rule_points
 from app.services.normalizer import (
     COLOR_NEIGHBORS,
     color_set,
@@ -131,6 +137,7 @@ class MatchScore:
     image_status: str = "no_user_photo"
     common_keywords: list[str] = field(default_factory=list)
     matched_attributes: list[str] = field(default_factory=list)
+    points: RulePoints | None = None  # 규칙 점수 100점 (순위 기준)
 
 
 def _infer_method(a: list[float] | None, b: list[float] | None) -> str:
@@ -162,6 +169,8 @@ def score_pair(
     notice_weight: str | None = None,
     image_method: str | None = None,
     image_status: str | None = None,
+    dog_region: str | None = None,
+    notice_region: str | None = None,
 ) -> MatchScore:
     # ── 규칙 기반 ──
     b = breed_score(dog_breed, notice_breed)
@@ -240,6 +249,19 @@ def score_pair(
         + ")"
     )
 
+    points = compute_rule_points(
+        dog_breed=dog_breed,
+        dog_color=dog_color,
+        dog_features=dog_features,
+        dog_date=dog_date,
+        dog_region=dog_region,
+        notice_breed=notice_breed,
+        notice_color=notice_color,
+        notice_features=notice_features,
+        notice_date=notice_date,
+        notice_region=notice_region,
+    )
+
     return MatchScore(
         breed=b,
         color=c,
@@ -262,6 +284,7 @@ def score_pair(
         image_status=status,
         common_keywords=tr.common_keywords,
         matched_attributes=tr.matched_attributes,
+        points=points,
     )
 
 

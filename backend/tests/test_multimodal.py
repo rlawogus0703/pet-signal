@@ -162,7 +162,7 @@ class FakeSource(NoticeSource):
             notice_id="FAKE2", source="fake", breed="말티즈", color="흰색", age="3살",
             features="소형, 빨간 목걸이, 사람을 잘 따름", found_date=date(2026, 11, 12),
             found_lat=37.42, found_lng=127.12, photo_url=str(DOGS / "maltese_white.jpg"),
-            shelter_name="테스트 보호소", care_addr="경기도 성남시", notice_start=date(2026, 11, 12),
+            shelter_name="테스트 보호소", care_addr="경기도 성남시", org_nm="경기도 성남시", notice_start=date(2026, 11, 12),
             notice_end=date(2026, 11, 22),
         )
         return [rec, rec2], {"total_count": 2}
@@ -204,16 +204,28 @@ def test_api_flow_with_photo_and_collect(tmp_path, monkeypatch):
         assert [it["notice_id"] for it in items][0] == "FAKE2"  # 실제 공고가 있으면 시드 제외 + 말티즈 1위
         assert all(it["source"] != "seed" for it in items)
         top = items[0]
-        for k in ("text_score", "image_score", "rule_score", "final_score"):
-            assert top[k] is not None
-        assert top["score"]["image_method"] == image_embedder.METHOD_LIGHT
-        assert top["score"]["text_keyword"] is not None and top["score"]["text_semantic"] is not None
+        # 순위는 규칙 점수 100점 (김민재 앱 기준): 품종 30 · 색상 25 · 지역 20 · 특징 15 · 날짜 10
+        sc = top["score"]
+        assert sc["max_points"] == 100
+        assert [it["key"] for it in sc["items"]] == ["breed", "color", "region", "features", "date"]
+        assert [it["max"] for it in sc["items"]] == [30, 25, 20, 15, 10]
+        assert sc["points"] == sum(it["points"] for it in sc["items"]) == 100
+        assert sc["items"][2]["reason"] == "같음 (경기 성남시)"
+        assert sc["caption"].startswith("일치 근거를 합산한 점수")
+        assert top["final_score"] == pytest.approx(1.0)
+        # 텍스트·사진 유사도는 순위에 쓰지 않음
+        assert top["image_score"] is None and top["text_score"] is None
+        second = items[1]["score"]
+        assert second["points"] == 55  # 믹스견(품종 0) · 흰색 공통 25 · 성남시 20 · 특징 0 · 날짜 10
+        assert items[1]["rank"] == 2
         assert top["notice_start"] == "2026-11-12" and top["shelter_address"] == "경기도 성남시"
-        assert any("사진 유사도" in x for x in top["reasons"])
+        assert any(x.startswith("품종 30/30점") for x in top["reasons"])
+        d = c.get(f"/api/v1/lost-dogs/{dog['id']}/candidates/{top['notice_id']}").json()
+        assert d["rank"] == 1 and d["score"]["points"] == 100
         p = c.get(top["photo_proxy_url"])
         assert p.status_code == 200 and p.headers["content-type"] == "image/jpeg"
         assert c.get(dog["photo_proxy_url"]).status_code == 200
         info = c.get("/api/v1/system").json()
-        assert info["pipeline"]["fusion_weights"]["image"] == 0.30
+        assert info["pipeline"]["rule_points"] == {"breed": 30, "color": 25, "region": 20, "features": 15, "date": 10}
     finally:
         app.dependency_overrides.clear()

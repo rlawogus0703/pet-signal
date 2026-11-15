@@ -90,7 +90,10 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
     }).toList();
     switch (_sort) {
       case SortBy.score:
-        out.sort((a, b) => b.score.total.compareTo(a.score.total));
+        out.sort((a, b) {
+          final byPoints = b.score.displayPoints.compareTo(a.score.displayPoints);
+          return byPoints != 0 ? byPoints : a.rank.compareTo(b.rank);
+        });
       case SortBy.distance:
         out.sort((a, b) => (distanceKm(d.dog, a) ?? 1e9).compareTo(distanceKm(d.dog, b) ?? 1e9));
       case SortBy.date:
@@ -108,7 +111,7 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
         SegmentedButton<SortBy>(
           showSelectedIcon: false,
           segments: const [
-            ButtonSegment(value: SortBy.score, label: Text('유사도순'), icon: Icon(Icons.star_outline_rounded, size: 18)),
+            ButtonSegment(value: SortBy.score, label: Text('점수순'), icon: Icon(Icons.star_outline_rounded, size: 18)),
             ButtonSegment(value: SortBy.distance, label: Text('가까운순'), icon: Icon(Icons.near_me_outlined, size: 18)),
             ButtonSegment(value: SortBy.date, label: Text('최근 발견순'), icon: Icon(Icons.schedule_rounded, size: 18)),
           ],

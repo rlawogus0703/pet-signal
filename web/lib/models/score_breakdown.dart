@@ -1,7 +1,39 @@
-/// 항목별·갈래별·최종 유사도 점수 (0~1)
+/// 규칙 점수 한 항목 (예: 품종 30/30점 · 일치 (포메라니안))
+class RuleItem {
+  final String key; // breed | color | region | features | date
+  final String label; // 품종 | 색상 | 지역 | 특징 | 날짜
+  final int points;
+  final int max;
+  final String reason;
+
+  const RuleItem({required this.key, required this.label, required this.points, required this.max, required this.reason});
+
+  double get fraction => max == 0 ? 0 : points / max;
+
+  factory RuleItem.fromJson(Map<String, dynamic> j) => RuleItem(
+        key: j['key'] as String? ?? '',
+        label: j['label'] as String? ?? '',
+        points: (j['points'] as num?)?.toInt() ?? 0,
+        max: (j['max'] as num?)?.toInt() ?? 0,
+        reason: j['reason'] as String? ?? '',
+      );
+}
+
+/// 매칭 점수
 ///
-/// 교수님 피드백 구성도: 규칙(rule) · 텍스트(text) · 이미지(image) → 멀티모달 최종(total)
+/// 순위 기준 = 규칙 점수 100점 (김민재 앱과 같은 기준): 품종 30 · 색상 25 · 지역 20 · 특징 15 · 날짜 10.
+/// 일치 근거를 합산한 점수이며 동일견일 확률이 아닙니다. total = points / 100.
+/// 아래 0~1 필드(rule/text/image 등)는 예전 멀티모달 방식 호환용으로 남겨 두었습니다.
 class ScoreBreakdown {
+  static const defaultCaption = '일치 근거를 합산한 점수이며, 동일견일 확률이 아니에요.';
+  static const defaultNote = '지역은 시군구 표기를 비교해요. 실제 거리와 사진 유사도는 계산하지 않아요. 구조 접수일은 실제 발견일과 다를 수 있어요.';
+
+  // 규칙 점수 100점
+  final int? points;
+  final int maxPoints;
+  final List<RuleItem> items;
+  final String caption;
+  final String note;
   // 규칙 항목
   final double breed;
   final double color;
@@ -24,6 +56,11 @@ class ScoreBreakdown {
   final String? imageStatus; // ok | no_user_photo | no_notice_photo | fetch_failed
 
   const ScoreBreakdown({
+    this.points,
+    this.maxPoints = 100,
+    this.items = const [],
+    this.caption = defaultCaption,
+    this.note = defaultNote,
     required this.breed,
     required this.color,
     required this.distance,
@@ -44,7 +81,24 @@ class ScoreBreakdown {
 
   static double? _d(dynamic v) => (v as num?)?.toDouble();
 
+  /// 화면에 보여줄 점수 (0~100). 예전 응답이면 total 로 대신합니다.
+  int get displayPoints => points ?? (total * 100).round();
+
+  RuleItem? item(String key) {
+    for (final it in items) {
+      if (it.key == key) return it;
+    }
+    return null;
+  }
+
   factory ScoreBreakdown.fromJson(Map<String, dynamic> j) => ScoreBreakdown(
+        points: (j['points'] as num?)?.toInt(),
+        maxPoints: (j['max_points'] as num?)?.toInt() ?? 100,
+        items: (j['items'] as List<dynamic>? ?? [])
+            .map((e) => RuleItem.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        caption: j['caption'] as String? ?? defaultCaption,
+        note: j['note'] as String? ?? defaultNote,
         breed: _d(j['breed']) ?? 0,
         color: _d(j['color']) ?? 0,
         distance: _d(j['distance']) ?? 0,

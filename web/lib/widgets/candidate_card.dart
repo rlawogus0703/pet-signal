@@ -10,7 +10,7 @@ import '../utils/format.dart';
 import 'common.dart';
 import 'score_bar.dart';
 
-/// 유사 후보 카드 (사진 + 총점 링 + 일치 칩)
+/// 유사 후보 카드 (사진 + 규칙 점수 링 + 일치 칩 + 항목별 점수)
 class CandidateCard extends StatelessWidget {
   const CandidateCard({
     super.key,
@@ -32,16 +32,10 @@ class CandidateCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = candidate;
     final s = c.score;
-    final km = distanceKm(dog, c);
-    final dd = dayDiff(dog, c);
+    final items = ruleItemsOf(c);
     final chips = <Widget>[
-      if (s.breed >= 0.99) const MatchChip(label: '품종 일치', icon: Icons.check_rounded, strong: true)
-      else if (s.breed >= 0.5) const MatchChip(label: '품종 보정', icon: Icons.sync_alt_rounded),
-      if (s.color >= 0.99) const MatchChip(label: '색상 일치', icon: Icons.check_rounded, strong: true)
-      else if (s.color >= 0.5) const MatchChip(label: '비슷한 색상', icon: Icons.sync_alt_rounded),
-      if (km != null) MatchChip(label: km < 10 ? '${km.toStringAsFixed(1)}km' : '${km.round()}km', icon: Icons.place_outlined, strong: km <= 10),
-      MatchChip(label: dd >= 0 ? '실종 $dd일 후' : '실종 ${-dd}일 전', icon: Icons.event_outlined, strong: dd >= 0 && dd <= 7),
-      if ((s.image ?? 0) >= 0.7) const MatchChip(label: '사진 유사', icon: Icons.auto_awesome_rounded),
+      for (final it in items)
+        if (it.points > 0) MatchChip(label: ruleChipLabel(it), icon: ruleIcon(it.key), strong: true),
     ];
     return HoverCard(
       onTap: onTap,
@@ -112,7 +106,7 @@ class CandidateCard extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(4),
                     decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: AppShadows.soft),
-                    child: ScoreRing(value: s.total, size: 60, stroke: 5.5, label: '유사도'),
+                    child: ScoreRing(value: s.displayPoints / 100, size: 60, stroke: 5.5, label: '/100'),
                   ),
                 ),
               ),
@@ -131,7 +125,7 @@ class CandidateCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Padding(
                   padding: const EdgeInsets.only(right: 70),
-                  child: Text('${c.age ?? '나이 미상'} · ${ymd(c.foundDate)} 발견',
+                  child: Text('${c.age ?? '나이 미상'} · 접수 ${ymd(c.foundDate)}',
                       style: const TextStyle(color: AppColors.subtext, fontSize: 13)),
                 ),
                 const SizedBox(height: 8),
@@ -143,10 +137,17 @@ class CandidateCard extends StatelessWidget {
                         maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
                   ),
                 ]),
-                const SizedBox(height: 12),
-                Wrap(spacing: 6, runSpacing: 6, children: chips),
-                const SizedBox(height: 12),
-                BranchBars(items: branchItems(c), compact: true),
+                const SizedBox(height: 10),
+                Text('규칙 점수 ${s.displayPoints}/${s.maxPoints}',
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: ruleTeal)),
+                if (chips.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(spacing: 6, runSpacing: 6, children: chips),
+                ],
+                if (items.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  RulePointsMini(items: items),
+                ],
                 const SizedBox(height: 10),
                 Row(children: [
                   const Icon(Icons.home_work_outlined, size: 15, color: AppColors.subtext),
@@ -155,7 +156,7 @@ class CandidateCard extends StatelessWidget {
                     child: Text(c.shelterName,
                         maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: AppColors.subtext)),
                   ),
-                  const Text('추천 이유 보기', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.coralDark)),
+                  const Text('점수 근거 보기', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.coralDark)),
                   const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.coralDark),
                 ]),
               ],

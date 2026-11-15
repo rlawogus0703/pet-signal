@@ -27,7 +27,7 @@
 **실제 보호소 공고 후보 목록**
 ![후보](screenshots/live_03_candidates.png)
 
-**추천 이유 상세 (텍스트 · 이미지 · 멀티모달 점수)**
+**추천 이유 상세 (규칙 점수 100점, 항목별 근거)**
 ![상세](screenshots/live_04_detail.png)
 
 ## 팀 역할 (10조)
@@ -40,43 +40,25 @@
 
 공유 계약: [`API_SPEC.md`](./API_SPEC.md)
 
-## 시스템 구성도 (교수님 피드백 반영)
+## 매칭 점수: 규칙 점수 100점 (민재 앱과 같은 기준)
 
-```mermaid
-flowchart LR
-  IN["사용자 입력\n나이 · 지역 · 이미지\n품종 · 색상 · 특징"]
-  subgraph Data["데이터"]
-    DB["실종견 DB"]
-    PUB["공공데이터 API\n구조동물 조회 v2"]
-    TXT["Text 기반 데이터\n품종·색상·나이·특징 문장"]
-    IMG["Image 기반 데이터\n보호자 사진 · popfile1/2"]
-    DB --> TXT & IMG
-    PUB --> TXT & IMG
-  end
-  subgraph AI["AI 유사도 매칭"]
-    TA["텍스트 알고리즘\n키워드(단어) · 문장 의미 · 속성/성향"]
-    IA["이미지 유사도\nCLIP 임베딩 / 색상·형태 특징"]
-    RULE["규칙 점수\n품종·색상·거리·날짜·나이"]
-  end
-  MM["Multimodal 융합\n규칙 45% · 텍스트 25% · 이미지 30%"]
-  OUT["실종견 매칭 추천\n유사 후보 순위 + 추천 이유"]
-  IN --> DB
-  TXT --> TA
-  IMG --> IA
-  TA --> MM
-  IA --> MM
-  RULE --> MM
-  MM --> OUT
-```
+앱(민재)과 웹(재현)이 같은 기준으로 후보 순위를 매깁니다. 일치 근거를 합산한 점수이며, **동일견일 확률이 아닙니다.**
 
-| 갈래 | 계산 | 코드 |
-|---|---|---|
-| 텍스트 (`text_score`) | 키워드 40% (특징 단어 Dice, 동의어·접두 일치) + 문장 의미 40% (sentence-transformers 다국어 임베딩, 없으면 글자 2-gram) + 속성·성향 20% (크기·목걸이·옷·귀·꼬리·털·온순/경계 추출 비교) | `backend/app/ai/text_similarity.py`, `web/lib/matching/text_similarity.dart` |
-| 이미지 (`image_score`) | 보호자 사진 ↔ 공고 사진(popfile1). CLIP(ViT-B-32) 코사인, 모델이 없으면 색상 히스토그램 + dHash (Pillow만 필요) | `backend/app/ai/image_embedder.py`, `web/lib/matching/image_features.dart` |
-| 규칙 (`rule_score`) | 품종 25 · 색상 25 · 거리 25 · 날짜 15 · 나이 10 (품종·색상 표기 정규화, 시군구 좌표 거리) | `backend/app/services/matcher.py`, `web/lib/matching/scorer.dart` |
-| 최종 (`final_score`) | 규칙 45% + 텍스트 25% + 이미지 30%. 보호자 사진이 없으면 이미지 제외 후 재분배, 공고 사진만 없으면 이미지에 중립값 0.40 | `backend/app/ai/fusion.py` |
+| 항목 | 만점 | 받는 조건 | 근거 예 |
+|---|---|---|---|
+| 품종 | 30 | 정규화한 품종이 같음 | `일치 (포메라니안)` |
+| 색상 | 25 | 공통 색상이 하나라도 있음 | `공통 색상: 흰색` |
+| 지역 | 20 | 시·도 + 시·군·구 표기가 같음 (실종 위치 ↔ 공고 관할 orgNm) | `다름 (경기 오산시 / 경기 연천군)` |
+| 특징 | 15 | 보호자 설명과 공고 특징에 공통 단어가 있음 | `공통 특징 단어 없음` |
+| 날짜 | 10 | 실종일 당일 또는 이후에 구조 접수됨 | `실종일 이후 구조 접수 (2026-11-04)` |
 
-서버와 웹(Mock 모드) 점수 공식은 같습니다. `backend/tests/test_multimodal.py` 와 `web/test/scorer_alignment_test.dart` 가
+- 항목마다 다 받거나(만점) 못 받거나(0점)입니다. 같은 점수면 최근에 접수된 공고가 먼저 옵니다.
+- 지역은 시군구 표기를 비교해요. 실제 거리와 사진 유사도는 계산하지 않아요. 구조 접수일은 실제 발견일과 다를 수 있어요.
+- 코드: `backend/app/services/rule_points.py` (서버), `web/lib/matching/rule_points.dart` (웹 Mock 모드).
+- API: `score.points`(예: 65), `score.max_points`(100), `score.items[]`(key·label·points·max·reason). `final_score`·`score.total` = points / 100.
+- 예전 멀티모달 점수(규칙·텍스트·사진 융합) 코드는 성능평가(`backend/eval`)용으로 남아 있지만 순위에는 쓰지 않습니다.
+
+서버와 웹(Mock 모드) 점수는 같습니다. `backend/tests/test_multimodal.py` 와 `web/test/scorer_alignment_test.dart` 가
 같은 기준값(`web/test/fixtures/scoring_cases.json`)으로 확인합니다. 기준을 바꾸면
 `cd backend && python -m scripts.export_scoring_fixture` 로 다시 만드세요.
 
@@ -112,8 +94,8 @@ VS Code: `C:\dev\pet-signal\web` 열고 디바이스 Chrome 선택 후 Run.
 1. **홈**: 짧은 소개와 **실종견 등록하기**·**근처 공고 둘러보기** 버튼, 3단계 이용 순서. 가까운 공고는 로그인 없이 볼 수 있어요. 통계·정규화 예시·시스템 구성도는 **서비스 소개**에서 볼 수 있어요.
 2. **회원가입 또는 로그인** 후 **실종견 등록**(사진은 선택, 직접 입력) → **유사 후보** 화면.
    - 서비스 소개의 정규화 예시처럼, 보호자는 “흰색 말티즈”, 보호소는 “크림색 믹스견”으로 올려도 후보에 오를 수 있어요.
-3. 후보 카드 클릭 → **추천 이유 상세**: 내 사진 ↔ 공고 사진 나란히, 텍스트/이미지/멀티모달 최종 막대 + 텍스트 세부(키워드·문장 의미·속성) + 규칙 항목, 추천 이유, 보호소 주소·연락처·공고 기간.
-   - **서비스 소개** 화면의 **시스템 구성도**: 사용자 입력 → 실종견 DB + 공공데이터 API(Text/Image) → AI 유사도 매칭 → Multimodal → 매칭 추천.
+3. 후보 카드 클릭 → **추천 이유 상세**: 내 사진 ↔ 공고 사진 나란히, **규칙 점수 NN/100** 과 품종·색상·지역·특징·날짜 항목 카드(점수·막대·한 줄 근거), 보호소 주소·연락처·공고 기간.
+   - **서비스 소개** 화면의 **시스템 구성도**: 사용자 입력 → 실종견 DB + 공공데이터 API → 일치 비교 → 규칙 점수 100점 → 매칭 추천.
 4. **알림** 탭: 신규 후보 알림(안 읽음 표시, 모두 읽음), **마이페이지**: 내 실종견 목록·로그아웃.
 
 ### 바로가기 URL
@@ -223,7 +205,7 @@ flutter run -d chrome
 ```
 
 앱 상단 **Mock 시연 모드** 버튼 → **API** 로 바꾸고 주소 `http://127.0.0.1:8000` → 로그인 → 사진과 함께 실종견 등록.
-후보 카드와 상세 화면에 실제 보호소 사진(서버 경유 `/api/v1/notices/{id}/photo`), 텍스트/이미지/멀티모달 점수, 보호소 주소·전화·공고 기간이 나옵니다.
+후보 카드와 상세 화면에 실제 보호소 사진(서버 경유 `/api/v1/notices/{id}/photo`), 규칙 점수(100점)와 항목별 근거, 보호소 주소·전화·공고 기간이 나옵니다.
 
 ### 테스트
 
