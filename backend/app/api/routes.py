@@ -30,7 +30,7 @@ from app.ai.fusion import MODAL_WEIGHTS, RULE_WEIGHTS
 from app.config import get_settings
 from app.services.collect_lock import acquire_collect_lock, release_collect_lock
 from app.services.collector import collect_notices
-from app.services.image_index import notice_photo_bytes, save_dog_photo
+from app.services.image_index import notice_photo_bytes, save_dog_photo, thumbnail_bytes, THUMB_MAX_SIDE
 from app.services.matching_service import rematch_lost_dog
 from app.services.notice_state import STALE_STATE
 from app.services.notice_query import list_nearby
@@ -136,6 +136,27 @@ def _image_type(data: bytes) -> str:
     if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
         return "image/webp"
     return "application/octet-stream"
+
+
+
+def _thumb_side(size: str | None, w: int | None) -> int | None:
+    """size=thumb 또는 w=픽셀(64-800). 없으면 원본."""
+    if w is not None:
+        return max(64, min(800, w))
+    if size and size.strip().lower() == "thumb":
+        return THUMB_MAX_SIDE
+    return None
+
+
+def _photo_response(data: bytes, max_side: int | None) -> Response:
+    headers = {"Cache-Control": "public, max-age=86400"}
+    if max_side:
+        try:
+            data = thumbnail_bytes(data, max_side=max_side)
+            return Response(content=data, media_type="image/jpeg", headers=headers)
+        except Exception:
+            pass
+    return Response(content=data, media_type=_image_type(data), headers=headers)
 
 
 def _decode_photo(raw: str | None) -> bytes | None:
@@ -400,23 +421,34 @@ def get_notice(notice_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/notices/{notice_id}/photo")
-def notice_photo(notice_id: str, n: int = Query(1, ge=1, le=2), db: Session = Depends(get_db)):
+def notice_photo(
+    notice_id: str,
+    n: int = Query(1, ge=1, le=2),
+    size: str | None = Query(None, description="thumb: 긴 변 400px JPEG 미리보기"),
+    w: int | None = Query(None, ge=64, le=800, description="긴 변 픽셀 (64-800)"),
+    db: Session = Depends(get_db),
+):
     notice = db.get(NoticeRow, notice_id)
     if not notice:
         raise HTTPException(404, "notice not found")
     data = notice_photo_bytes(notice, which=n)
     if not data:
         raise HTTPException(404, "photo not available")
-    return Response(content=data, media_type=_image_type(data), headers={"Cache-Control": "public, max-age=86400"})
+    return _photo_response(data, _thumb_side(size, w))
 
 
 @router.get("/lost-dogs/{lost_dog_id}/photo")
-def lost_dog_photo(lost_dog_id: str, db: Session = Depends(get_db)):
+def lost_dog_photo(
+    lost_dog_id: str,
+    size: str | None = Query(None, description="thumb: 긴 변 400px JPEG 미리보기"),
+    w: int | None = Query(None, ge=64, le=800, description="긴 변 픽셀 (64-800)"),
+    db: Session = Depends(get_db),
+):
     dog = db.get(LostDogRow, lost_dog_id)
     if not dog or not dog.photo_path or not Path(dog.photo_path).is_file():
         raise HTTPException(404, "photo not found")
     data = Path(dog.photo_path).read_bytes()
-    return Response(content=data, media_type=_image_type(data))
+    return _photo_response(data, _thumb_side(size, w))
 
 
 # ── 시스템 구성 정보 (발표·디버그용) ─────────────────────────────

@@ -371,9 +371,10 @@ class _NoticeCard extends StatelessWidget {
             child: AspectRatio(
               aspectRatio: 4 / 3,
               child: DogPhoto(
-                url: n.displayPhotoUrl,
-                fallbackUrl: n.displayPhotoFallback,
+                url: n.thumbUrl,
+                fallbackUrl: n.thumbFallbackUrl,
                 radius: 0,
+                cacheWidth: 400,
               ),
             ),
           ),

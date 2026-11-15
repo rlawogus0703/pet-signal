@@ -1,3 +1,4 @@
+import '../utils/photo_url.dart';
 import 'score_breakdown.dart';
 
 /// 유사 후보 (동일 개체 단정 아님)
@@ -73,6 +74,10 @@ class Candidate {
 
   /// 화면에 띄울 공고 사진 주소 (서버 경유 우선 — 브라우저 CORS 문제 회피)
   String? get displayPhotoUrl => photoProxyUrl ?? photoUrl;
+
+  /// 목록 카드용 작은 미리보기 (상세 화면은 displayPhotoUrl 을 씁니다)
+  String? get thumbUrl => photoThumbUrl(photoProxyUrl, photoUrl);
+  String? get thumbFallbackUrl => photoThumbUrl(photo2ProxyUrl, photoUrl2);
 
   /// 사용자 사진은 있는데 공고 사진이 없어 이미지 점수를 못 낸 경우
   bool get imageMissing => score.image == null && score.imageStatus != 'no_user_photo';

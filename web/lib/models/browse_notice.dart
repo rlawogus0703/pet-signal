@@ -1,3 +1,5 @@
+import '../utils/photo_url.dart';
+
 /// 로그인 없이 둘러보는 보호소 공고
 class BrowseNotice {
   final String noticeId;
@@ -62,6 +64,10 @@ class BrowseNotice {
 
   String? get displayPhotoUrl => photoProxyUrl ?? photoUrl;
   String? get displayPhotoFallback => photo2ProxyUrl ?? photoUrl2;
+
+  /// 목록 카드용 작은 미리보기 (상세 화면은 displayPhotoUrl 을 씁니다)
+  String? get thumbUrl => photoThumbUrl(photoProxyUrl, photoUrl);
+  String? get thumbFallbackUrl => photoThumbUrl(photo2ProxyUrl, photoUrl2);
 
   static DateTime? _date(dynamic v) => v == null ? null : DateTime.tryParse('$v');
 

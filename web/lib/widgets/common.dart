@@ -42,6 +42,7 @@ class DogPhoto extends StatelessWidget {
     this.radius = 16,
     this.aspectRatio,
     this.heroTag,
+    this.cacheWidth,
   });
 
   final Uint8List? bytes;
@@ -53,6 +54,8 @@ class DogPhoto extends StatelessWidget {
   final double radius;
   final double? aspectRatio;
   final Object? heroTag;
+  /// 목록처럼 작게 보여줄 때 디코드 메모리를 줄입니다. 상세 화면은 비워 두세요.
+  final int? cacheWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -64,6 +67,7 @@ class DogPhoto extends StatelessWidget {
     Widget network(String u, Widget Function() onErr) => Image.network(
           u,
           fit: BoxFit.cover,
+          cacheWidth: cacheWidth,
           errorBuilder: (_, _, _) => onErr(),
         );
     if (bytes != null) {

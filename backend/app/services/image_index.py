@@ -7,10 +7,14 @@
 
 from __future__ import annotations
 
+import hashlib
+import io
 import logging
 import time
+from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from threading import Lock
 
 import httpx
 from sqlalchemy.orm import Session
@@ -190,3 +194,89 @@ def ensure_dog_image_embedding(dog: LostDogRow) -> list[float] | None:
     dog.image_embedding_json = dumps_emb(emb)
     dog.image_embed_method = m
     return emb
+
+
+# ── 목록용 미리보기(썸네일) ─────────────────────────────────
+THUMB_MAX_SIDE = 400
+THUMB_QUALITY = 75
+THUMB_MEM_MAX = 500
+THUMB_MIN_SIDE = 64
+THUMB_CLAMP_SIDE = 800
+
+_thumb_mem: OrderedDict[str, bytes] = OrderedDict()
+_thumb_lock = Lock()
+
+
+def clamp_thumb_side(max_side: int) -> int:
+    return max(THUMB_MIN_SIDE, min(THUMB_CLAMP_SIDE, int(max_side)))
+
+
+def thumb_cache_path(src: bytes, max_side: int) -> Path:
+    h = hashlib.sha1(src).hexdigest()
+    return image_embedder.CACHE_DIR / f"{h}.t{max_side}.jpg"
+
+
+def clear_thumb_cache() -> None:
+    """테스트용: 메모리 캐시만 비웁니다."""
+    with _thumb_lock:
+        _thumb_mem.clear()
+
+
+def _remember_thumb(key: str, data: bytes) -> None:
+    with _thumb_lock:
+        _thumb_mem[key] = data
+        _thumb_mem.move_to_end(key)
+        while len(_thumb_mem) > THUMB_MEM_MAX:
+            _thumb_mem.popitem(last=False)
+
+
+def make_thumbnail(data: bytes, *, max_side: int = THUMB_MAX_SIDE) -> bytes:
+    """긴 변을 max_side 로 줄인 progressive JPEG. RGBA/P 는 흰 배경 RGB 로 바꿉니다."""
+    from PIL import Image
+
+    max_side = clamp_thumb_side(max_side)
+    im = Image.open(io.BytesIO(data))
+    im.load()
+    if im.mode in ("RGBA", "LA") or (im.mode == "P" and "transparency" in im.info):
+        rgba = im.convert("RGBA")
+        bg = Image.new("RGB", rgba.size, (255, 255, 255))
+        bg.paste(rgba, mask=rgba.split()[-1])
+        im = bg
+    elif im.mode != "RGB":
+        im = im.convert("RGB")
+    w, h = im.size
+    longest = max(w, h)
+    if longest > max_side:
+        scale = max_side / longest
+        im = im.resize((max(1, round(w * scale)), max(1, round(h * scale))), Image.Resampling.LANCZOS)
+    out = io.BytesIO()
+    im.save(out, format="JPEG", quality=THUMB_QUALITY, optimize=True, progressive=True)
+    return out.getvalue()
+
+
+def thumbnail_bytes(data: bytes, *, max_side: int = THUMB_MAX_SIDE) -> bytes:
+    """미리보기 JPEG. 메모리(최대 500장)와 data/image_cache/ 디스크를 함께 씁니다."""
+    max_side = clamp_thumb_side(max_side)
+    key = hashlib.sha1(data).hexdigest() + f":{max_side}"
+    with _thumb_lock:
+        cached = _thumb_mem.get(key)
+        if cached is not None:
+            _thumb_mem.move_to_end(key)
+            return cached
+    path = thumb_cache_path(data, max_side)
+    if path.is_file() and path.stat().st_size > 0:
+        try:
+            out = path.read_bytes()
+            if out[:3] == b"\xff\xd8\xff":
+                _remember_thumb(key, out)
+                return out
+        except Exception:
+            pass
+    out = make_thumbnail(data, max_side=max_side)
+    try:
+        image_embedder.CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(out)
+    except Exception:
+        log.debug("thumb disk cache write failed", exc_info=True)
+    _remember_thumb(key, out)
+    return out

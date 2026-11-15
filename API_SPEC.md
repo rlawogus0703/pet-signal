@@ -281,8 +281,8 @@ Header: `Authorization: Bearer <token>`
 
 - `POST /api/v1/admin/seed` — 예시 공고 적재. 요청 헤더 `X-Admin-Key` 가 서버의 `ADMIN_API_KEY` 와 같아야 합니다. 키가 설정되지 않았거나 틀리면 403.
 - `POST /api/v1/admin/collect?embed_images=true` — 공공 API 수집 (`SERVICE_KEY` 필요, `X-Admin-Key` 필수). 기본은 전국 공고중 전부 + 보호중 최근 90일 (1000건 × 페이지 끝까지), 사진 임베딩은 최대 3,000장씩 이어서 계산. 이미 수집이 돌고 있으면 409. 시작·예약 수집은 키 없이 서버 안에서 그대로 동작합니다.
-- `GET /api/v1/notices/{notice_id}/photo?n=1|2` — 공고 사진 (서버 캐시 경유, CORS 허용)
-- `GET /api/v1/lost-dogs/{id}/photo` — 보호자가 올린 사진
+- `GET /api/v1/notices/{notice_id}/photo?n=1|2` — 공고 사진 (서버 캐시 경유, CORS 허용). `size=thumb` 또는 `w=`(64–800) 이면 긴 변을 줄인 JPEG 미리보기
+- `GET /api/v1/lost-dogs/{id}/photo` — 보호자가 올린 사진. 같은 `size`/`w` 미리보기 파라미터를 쓸 수 있습니다
 - `GET /api/v1/system` — 모드(api/sample), 공고 수, 사진 임베딩 수, 텍스트·이미지 방식, 가중치
   - 엔드포인트: `https://apis.data.go.kr/1543061/abandonmentPublicService_v2/abandonmentPublic_v2`
   - 포털: https://www.data.go.kr/data/15098931/openapi.do
