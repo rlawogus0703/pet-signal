@@ -23,6 +23,8 @@ from app.services.normalizer import color_set, norm_breed
 RULE_POINTS: dict[str, int] = {"breed": 30, "color": 25, "region": 20, "features": 15, "date": 10}
 RULE_LABELS: dict[str, str] = {"breed": "품종", "color": "색상", "region": "지역", "features": "특징", "date": "날짜"}
 MAX_POINTS = sum(RULE_POINTS.values())  # 100
+# 기준을 바꾸면 올립니다. 저장된 매칭 결과의 버전이 다르면 후보를 열 때 다시 계산합니다.
+RULE_VERSION = 2
 
 CAPTION = "일치 근거를 합산한 점수이며, 동일견일 확률이 아니에요."
 NOTE = "지역은 시군구 표기를 비교해요. 실제 거리와 사진 유사도는 계산하지 않아요. 구조 접수일은 실제 발견일과 다를 수 있어요."
@@ -59,6 +61,14 @@ SIDO_SHORT = {
     "제주특별자치도": "제주", "제주도": "제주", "제주": "제주",
 }
 _SIGUNGU = re.compile(r"^[가-힣]+(시|군|구)$")
+# 처음 보는 시·도 이름(예: 통합특별시)도 '…도/…시' 꼴이면 그대로 씁니다
+_SIDO_LIKE = re.compile(r"^[가-힣]{2,}(특별시|광역시|특별자치시|특별자치도|통합특별시|도)$")
+
+# 특징 단어 비교에서 빼는 너무 흔한 말 (정도·상태를 나타내는 말)
+GENERIC_FEATURE_WORDS = {
+    "많음", "많아요", "많고", "많은", "적음", "조금", "약간", "매우", "아주", "편임", "편이에요", "정도",
+    "상태", "보통", "양호", "있어요", "없어요", "같아요", "보이는", "추정됨",
+}
 
 
 def region_key(text: str | None) -> str | None:
@@ -70,6 +80,8 @@ def region_key(text: str | None) -> str | None:
     if not tokens:
         return None
     sido = SIDO_SHORT.get(tokens[0])
+    if not sido and _SIDO_LIKE.match(tokens[0]):
+        sido = tokens[0]
     if not sido:
         return None
     for t in tokens[1:3]:
@@ -109,7 +121,7 @@ class RulePoints:
         return it.points / it.max if it.max else 0.0
 
     def as_dict(self) -> dict:
-        return {"total": self.total, "max": self.max, "items": [i.as_dict() for i in self.items]}
+        return {"version": RULE_VERSION, "total": self.total, "max": self.max, "items": [i.as_dict() for i in self.items]}
 
 
 def _item(key: str, ok: bool, reason: str) -> RuleItem:
@@ -164,7 +176,7 @@ def compute_rule_points(
         items.append(_item("region", False, f"다름 ({dog_region} / {notice_region})"))
 
     # 특징 (공통 단어)
-    words = keyword_matches(dog_features or "", notice_features or "")
+    words = [w for w in keyword_matches(dog_features or "", notice_features or "") if w not in GENERIC_FEATURE_WORDS]
     items.append(
         _item("features", bool(words),
               "공통 특징 단어: " + ", ".join(words[:5]) if words else "공통 특징 단어 없음")

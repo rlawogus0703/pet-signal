@@ -53,6 +53,8 @@
 | 날짜 | 10 | 실종일 당일 또는 이후에 구조 접수됨 | `실종일 이후 구조 접수 (2026-11-04)` |
 
 - 항목마다 다 받거나(만점) 못 받거나(0점)입니다. 같은 점수면 최근에 접수된 공고가 먼저 옵니다.
+- 특징 단어 비교에서 '많음·조금·약간·상태' 같은 너무 흔한 말은 빼요. 처음 보는 시·도 이름(예: 통합특별시)은 표기 그대로 비교해요.
+- 기준을 바꾸면 `RULE_VERSION` 을 올리세요. 예전 버전으로 저장된 매칭 결과는 후보를 열 때 자동으로 다시 계산됩니다.
 - 지역은 시군구 표기를 비교해요. 실제 거리와 사진 유사도는 계산하지 않아요. 구조 접수일은 실제 발견일과 다를 수 있어요.
 - 코드: `backend/app/services/rule_points.py` (서버), `web/lib/matching/rule_points.dart` (웹 Mock 모드).
 - API: `score.points`(예: 65), `score.max_points`(100), `score.items[]`(key·label·points·max·reason). `final_score`·`score.total` = points / 100.

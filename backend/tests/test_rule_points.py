@@ -64,3 +64,12 @@ def test_region_key_parsing():
     # 공고는 관할 기관(orgNm)을 먼저 봅니다
     assert notice_region("경기도 연천군", "대신면 무촌리") == "경기 연천군"
     assert notice_region("", "경기도 성남시 상적동 96-7") == "경기 성남시"
+    # 처음 보는 시·도 이름도 그대로 비교
+    assert region_key("전남광주통합특별시 장흥군") == "전남광주통합특별시 장흥군"
+
+
+def test_generic_feature_words_do_not_count():
+    p = _pts(dog_features="소형, 겁이 많음", notice_features="경계심 많음")
+    assert p.item("features").points == 0
+    p = _pts(dog_features="소형, 겁이 많음", notice_features="겁이 많아요")
+    assert p.item("features").points == 15 and p.item("features").reason == "공통 특징 단어: 겁이"

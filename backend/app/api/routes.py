@@ -27,7 +27,7 @@ from app.models.schemas import (
     NearbyNoticeListOut,
 )
 from app.ai import image_embedder, text_similarity
-from app.services.rule_points import CAPTION, MAX_POINTS, NOTE, RULE_LABELS, RULE_POINTS
+from app.services.rule_points import CAPTION, MAX_POINTS, NOTE, RULE_LABELS, RULE_POINTS, RULE_VERSION
 from app.config import get_settings
 from app.services.collect_lock import acquire_collect_lock, release_collect_lock
 from app.services.collector import collect_notices
@@ -249,7 +249,8 @@ def list_candidates(
 
 
 def _has_rule_points(match: MatchResultRow) -> bool:
-    return bool(match.detail().get("rule_points"))
+    rp = match.detail().get("rule_points") or {}
+    return rp.get("version") == RULE_VERSION
 
 
 @router.get(

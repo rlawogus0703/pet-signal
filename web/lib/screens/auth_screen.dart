@@ -258,7 +258,7 @@ class _AuthVisual extends StatelessWidget {
               Text('“흰색 말티즈”로 찾던 아이가\n“크림색 믹스견”으로 올라와 있어도',
                   style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800, height: 1.4)),
               SizedBox(height: 10),
-              Text('표기 차이를 정규화하고 사진·설명까지 비교해서 놓치지 않게 알려드려요.',
+              Text('표기 차이를 정규화하고 품종·색상·지역·특징·날짜를 100점으로 비교해 알려드려요.',
                   style: TextStyle(color: Colors.white70, fontSize: 14.5, height: 1.5)),
             ],
           ),

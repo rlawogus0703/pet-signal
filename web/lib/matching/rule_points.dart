@@ -42,12 +42,20 @@ class RulePoints {
     '제주특별자치도': '제주', '제주도': '제주', '제주': '제주',
   };
   static final _sigungu = RegExp(r'^[가-힣]+(시|군|구)$');
+  // 처음 보는 시·도 이름(예: 통합특별시)도 '…도/…시' 꼴이면 그대로 씁니다
+  static final _sidoLike = RegExp(r'^[가-힣]{2,}(특별시|광역시|특별자치시|특별자치도|통합특별시|도)$');
+
+  /// 특징 단어 비교에서 빼는 너무 흔한 말 (서버 GENERIC_FEATURE_WORDS 와 같음)
+  static const genericFeatureWords = <String>{
+    '많음', '많아요', '많고', '많은', '적음', '조금', '약간', '매우', '아주', '편임', '편이에요', '정도',
+    '상태', '보통', '양호', '있어요', '없어요', '같아요', '보이는', '추정됨',
+  };
 
   /// '경기도 수원시 영통구 …' → '경기 수원시'. 못 읽으면 null.
   static String? regionKey(String? text) {
     final tokens = (text ?? '').replaceAll(',', ' ').split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toList();
     if (tokens.isEmpty) return null;
-    final sido = _sido[tokens[0]];
+    final sido = _sido[tokens[0]] ?? (_sidoLike.hasMatch(tokens[0]) ? tokens[0] : null);
     if (sido == null) return null;
     for (final t in tokens.skip(1).take(2)) {
       if (_sigungu.hasMatch(t)) return '$sido $t';
@@ -104,7 +112,10 @@ class RulePoints {
       items.add(_item('region', false, '다름 ($dogRegion / $noticeRegion)'));
     }
 
-    final words = TextSimilarity.keywordMatches(dogFeatures, noticeFeatures);
+    final words = [
+      for (final w in TextSimilarity.keywordMatches(dogFeatures, noticeFeatures))
+        if (!genericFeatureWords.contains(w)) w
+    ];
     items.add(_item('features', words.isNotEmpty,
         words.isNotEmpty ? '공통 특징 단어: ${words.take(5).join(', ')}' : '공통 특징 단어 없음'));
 
