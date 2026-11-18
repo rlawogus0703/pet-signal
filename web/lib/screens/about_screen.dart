@@ -21,8 +21,8 @@ class AboutScreen extends StatelessWidget {
         const SectionTitle('왜 펫 시그널인가요?', subtitle: '보호자가 공고를 직접 찾을 때 생기는 세 가지 문제를 풀어요.'),
         const SizedBox(height: Gap.m),
         _Grid(narrow: narrow, children: const [
-          _ProblemCard(Icons.refresh_rounded, '매일 반복되는 검색', '공고가 매일 새로 올라와 보호자가 같은 확인을 계속 반복해야 해요.',
-              '서버가 공공데이터 API의 공고를 모아 두고, 새 후보가 생기면 알려드려요.'),
+          _ProblemCard(Icons.refresh_rounded, '반복되는 검색', '공고가 새로 올라올 때마다 같은 확인을 반복해야 해요.',
+              '새 후보가 생기면 알려드려요.'),
           _ProblemCard(Icons.map_outlined, '구조 장소 ≠ 실종 장소', '강아지가 다른 동네에서 구조되면 지역을 바꿔 가며 여러 번 찾아야 해요.',
               '실종 위치와의 실제 거리로 점수를 매겨 지역 경계 없이 찾아요.'),
           _ProblemCard(Icons.translate_rounded, '서로 다른 표기', '“흰색 말티즈”가 공고에는 “크림색 믹스견”으로 올라오면 검색에서 빠져요.',
@@ -35,7 +35,7 @@ class AboutScreen extends StatelessWidget {
         const SizedBox(height: Gap.m),
         _Grid(narrow: narrow, columns: 4, children: const [
           _StepCard(1, Icons.edit_note_rounded, '실종견 등록', '사진, 품종, 색상, 나이, 실종 날짜·위치, 특징을 입력해요.'),
-          _StepCard(2, Icons.cloud_sync_rounded, '공고 불러오기', '농림축산검역본부 구조동물 API의 공고를 받아 표기를 통일해요.'),
+          _StepCard(2, Icons.cloud_sync_rounded, '공고 불러오기', '농림축산검역본부 구조동물 API의 공고를 사용해요.'),
           _StepCard(3, Icons.rule_rounded, '규칙 점수 매칭', '품종 30 · 색상 25 · 지역 20 · 특징 15 · 날짜 10, 100점 만점으로 합산해요.'),
           _StepCard(4, Icons.notifications_active_rounded, '추천 이유·알림', '항목별 점수와 이유를 보여주고 새 후보를 알림으로 보내요.'),
         ]),
