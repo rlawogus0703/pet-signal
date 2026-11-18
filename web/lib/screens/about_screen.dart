@@ -24,7 +24,7 @@ class AboutScreen extends StatelessWidget {
           _ProblemCard(Icons.refresh_rounded, '매일 반복되는 검색', '공고가 매일 새로 올라와 보호자가 같은 확인을 계속 반복해야 해요.',
               '서버가 공공데이터 API로 공고를 자동 수집하고, 새 후보가 생기면 알려드려요.'),
           _ProblemCard(Icons.map_outlined, '구조 장소 ≠ 실종 장소', '강아지가 다른 동네에서 구조되면 지역을 바꿔 가며 여러 번 찾아야 해요.',
-              '실종 위치와의 실제 거리(km)로 점수를 매겨 지역 경계 없이 찾아요.'),
+              '실종 위치와의 실제 거리로 점수를 매겨 지역 경계 없이 찾아요.'),
           _ProblemCard(Icons.translate_rounded, '서로 다른 표기', '“흰색 말티즈”가 공고에는 “크림색 믹스견”으로 올라오면 검색에서 빠져요.',
               '품종·색상 표기를 정규화하고, 일치 근거를 100점 규칙 점수로 합산해 후보를 보여줘요.'),
         ]),
@@ -222,7 +222,7 @@ class _NormalizationShowcase extends StatelessWidget {
       children: [
         _resultRow(false, '일반 조건 검색', '“말티즈” + “흰색” 필터 → 결과 없음'),
         const SizedBox(height: 10),
-        _resultRow(true, '펫 시그널', '믹스견(소형)·흰색과 크림색을 같은 계열로 정규화 → 유사 후보 1위'),
+        _resultRow(true, '펫 시그널', '믹스견·흰색과 크림색을 같은 계열로 정규화 → 유사 후보 1위'),
       ],
     );
     return Container(
@@ -359,7 +359,7 @@ class _Footer extends StatelessWidget {
     return const Padding(
       padding: EdgeInsets.symmetric(vertical: 12),
       child: Text(
-        '펫 시그널은 “유사 후보”를 제안할 뿐 같은 개체로 단정하지 않습니다. 예시 공고·사진은 샘플 데이터입니다 (사진: Wikimedia Commons).',
+        '펫 시그널은 “유사 후보”를 제안할 뿐 같은 개체로 단정하지 않습니다. 예시 공고·사진은 샘플 데이터입니다.',
         style: TextStyle(fontSize: 12, color: AppColors.subtext, height: 1.6),
       ),
     );
@@ -385,9 +385,9 @@ class SystemDiagram extends StatelessWidget {
           AppColors.navy,
           [
             _pill('품종·색상'),
-            _pill('실종 지역 (시군구)'),
+            _pill('실종 지역'),
             _pill('실종일'),
-            _pill('특징 · 사진(비교용)'),
+            _pill('특징 · 사진'),
           ],
         ),
         _stage(
@@ -429,7 +429,7 @@ class SystemDiagram extends StatelessWidget {
             _weight('특징', 15, _indigo),
             _weight('날짜', 10, AppColors.navy),
             const SizedBox(height: 4),
-            const Text('일치 근거를 합산한 점수예요 (동일견일 확률 아님)',
+            const Text('일치 근거를 합산한 점수예요',
                 style: TextStyle(fontSize: 11.5, color: AppColors.subtext)),
           ],
         ),
