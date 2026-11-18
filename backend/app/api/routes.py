@@ -34,7 +34,7 @@ from app.services.collector import collect_notices
 from app.services.image_index import notice_photo_bytes, save_dog_photo, thumbnail_bytes, THUMB_MAX_SIDE
 from app.services.matching_service import rematch_lost_dog
 from app.services.notice_state import STALE_STATE
-from app.services.notice_query import list_nearby
+from app.services.notice_query import load_notice, list_nearby
 from app.services.seed import seed_notices
 
 router = APIRouter(prefix="/api/v1")
@@ -238,7 +238,7 @@ def list_candidates(
 
     items: list[CandidateOut] = []
     for i, m in enumerate(matches, start=1):
-        notice = db.get(NoticeRow, m.notice_id)
+        notice = load_notice(db, m.notice_id)
         if not notice:
             continue
         items.append(_candidate_out(m, notice, i))
@@ -269,7 +269,7 @@ def candidate_detail(lost_dog_id: str, notice_id: str, db: Session = Depends(get
         match = find()
     if not match:
         raise HTTPException(404, "candidate not found")
-    notice = db.get(NoticeRow, notice_id)
+    notice = load_notice(db, notice_id)
     if not notice:
         raise HTTPException(404, "notice not found")
     better = db.scalar(
@@ -423,7 +423,7 @@ def notices_nearby(
 
 @router.get("/notices/{notice_id}", response_model=NearbyNoticeOut)
 def get_notice(notice_id: str, db: Session = Depends(get_db)):
-    notice = db.get(NoticeRow, notice_id)
+    notice = load_notice(db, notice_id)
     if not notice:
         raise HTTPException(404, "notice not found")
     return _notice_public(notice)
@@ -437,7 +437,7 @@ def notice_photo(
     w: int | None = Query(None, ge=64, le=800, description="긴 변 픽셀 (64-800)"),
     db: Session = Depends(get_db),
 ):
-    notice = db.get(NoticeRow, notice_id)
+    notice = load_notice(db, notice_id)
     if not notice:
         raise HTTPException(404, "notice not found")
     data = notice_photo_bytes(notice, which=n)

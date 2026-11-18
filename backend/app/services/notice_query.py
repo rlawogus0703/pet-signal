@@ -3,16 +3,32 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
-from sqlalchemy.orm import Session
+from sqlalchemy import or_, select
+from sqlalchemy.orm import Session, defer
 
 from app.models.db_models import NoticeRow
 from app.services.geo import geocode
 from app.services.matcher import haversine_km
-from app.services.matching_service import matchable_notices
+from app.services.notice_state import STALE_STATE
 from app.services.normalizer import color_set, norm_breed, norm_color
 
 KST = timezone(timedelta(hours=9))
 DEFAULT_ORIGIN = "서울특별시"
+
+_LIST_COLS = (
+    NoticeRow.notice_id,
+    NoticeRow.breed,
+    NoticeRow.kind_full,
+    NoticeRow.color,
+    NoticeRow.color_norm,
+    NoticeRow.found_date,
+    NoticeRow.found_lat,
+    NoticeRow.found_lng,
+    NoticeRow.source,
+    NoticeRow.process_state,
+)
+
+_HEAVY = (NoticeRow.raw_json, NoticeRow.text_embedding_json, NoticeRow.image_embedding_json)
 
 
 def _today() -> date:
@@ -30,7 +46,7 @@ def resolve_origin(lat: float | None, lng: float | None, region: str | None) -> 
     return g[0], g[1], g[2] or raw
 
 
-def _kind_ok(notice: NoticeRow, kind: str | None) -> bool:
+def _kind_ok(notice, kind: str | None) -> bool:
     if not kind or not kind.strip():
         return True
     q = kind.strip()
@@ -44,7 +60,7 @@ def _kind_ok(notice: NoticeRow, kind: str | None) -> bool:
     return False
 
 
-def _color_ok(notice: NoticeRow, color: str | None) -> bool:
+def _color_ok(notice, color: str | None) -> bool:
     if not color or not color.strip():
         return True
     q = color.strip()
@@ -55,6 +71,39 @@ def _color_ok(notice: NoticeRow, color: str | None) -> bool:
     if nq and nc and nq == nc:
         return True
     return bool(set(color_set(q)) & set(color_set(notice.color or "")))
+
+
+def _matchable_core(db: Session):
+    rows = list(
+        db.execute(
+            select(*_LIST_COLS).where(
+                NoticeRow.source != "seed",
+                or_(NoticeRow.process_state.is_(None), NoticeRow.process_state != STALE_STATE),
+            )
+        )
+    )
+    if rows:
+        return rows
+    return list(db.execute(select(*_LIST_COLS)))
+
+
+def load_notice(db: Session, notice_id: str) -> NoticeRow | None:
+    return db.scalars(
+        select(NoticeRow)
+        .options(*[defer(c) for c in _HEAVY])
+        .where(NoticeRow.notice_id == notice_id)
+    ).first()
+
+
+def notices_by_ids(db: Session, ids: list[str]) -> dict[str, NoticeRow]:
+    if not ids:
+        return {}
+    return {
+        n.notice_id: n
+        for n in db.scalars(
+            select(NoticeRow).options(*[defer(c) for c in _HEAVY]).where(NoticeRow.notice_id.in_(ids))
+        )
+    }
 
 
 def list_nearby(
@@ -71,10 +120,10 @@ def list_nearby(
     page_size: int = 20,
 ) -> dict[str, Any]:
     origin_lat, origin_lng, origin_label = resolve_origin(lat, lng, region)
-    notices = matchable_notices(db, light=True)
+    notices = _matchable_core(db)
     cutoff = _today() - timedelta(days=days) if days and days > 0 else None
 
-    rows: list[tuple[NoticeRow, float | None]] = []
+    rows: list[tuple[str, float | None]] = []
     for n in notices:
         if not _kind_ok(n, kind) or not _color_ok(n, color):
             continue
@@ -87,14 +136,16 @@ def list_nearby(
         if radius is not None and radius > 0:
             if dist is None or dist > radius:
                 continue
-        rows.append((n, dist))
+        rows.append((n.notice_id, dist))
 
-    rows.sort(key=lambda x: (x[1] is None, x[1] if x[1] is not None else 0, x[0].notice_id))
+    rows.sort(key=lambda x: (x[1] is None, x[1] if x[1] is not None else 0, x[0]))
     total = len(rows)
     page = max(1, page)
     page_size = max(1, min(100, page_size))
     start = (page - 1) * page_size
     sliced = rows[start : start + page_size]
+    by_id = notices_by_ids(db, [nid for nid, _ in sliced])
+    items = [(by_id[nid], dist) for nid, dist in sliced if nid in by_id]
     return {
         "origin_lat": origin_lat,
         "origin_lng": origin_lng,
@@ -102,5 +153,5 @@ def list_nearby(
         "total": total,
         "page": page,
         "page_size": page_size,
-        "items": sliced,
+        "items": items,
     }

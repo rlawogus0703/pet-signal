@@ -5,7 +5,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import delete, or_, select, update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 
 from app.ai import text_embedder, text_similarity
 from app.config import get_settings
@@ -18,14 +18,53 @@ from app.sources.base import NoticeRecord, NoticeSource
 
 log = logging.getLogger(__name__)
 
+_HEAVY = (NoticeRow.raw_json, NoticeRow.text_embedding_json, NoticeRow.image_embedding_json)
+
 
 def _now():
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-def upsert_record(db: Session, rec: NoticeRecord) -> bool:
+def _load_existing(db: Session, ids: list[str]) -> tuple[dict[str, NoticeRow], set[str]]:
+    found: dict[str, NoticeRow] = {}
+    missing_text: set[str] = set()
+    unique = list(dict.fromkeys(ids))
+    for i in range(0, len(unique), 500):
+        chunk = unique[i : i + 500]
+        stmt = (
+            select(NoticeRow, NoticeRow.text_embedding_json.is_(None))
+            .options(*[defer(c) for c in _HEAVY])
+            .where(NoticeRow.notice_id.in_(chunk))
+        )
+        for row, no_text in db.execute(stmt):
+            found[row.notice_id] = row
+            if no_text:
+                missing_text.add(row.notice_id)
+    return found, missing_text
+
+
+def _touch_collected(db: Session, ids: list[str]) -> None:
+    unique = list(dict.fromkeys(ids))
+    now = _now()
+    for i in range(0, len(unique), 500):
+        db.execute(
+            update(NoticeRow).where(NoticeRow.notice_id.in_(unique[i : i + 500])).values(collected_at=now)
+        )
+
+
+def upsert_record(
+    db: Session,
+    rec: NoticeRecord,
+    *,
+    existing: NoticeRow | None = None,
+    missing_text: set[str] | None = None,
+) -> bool:
     sentence = text_similarity.describe(rec.breed, rec.color, rec.age, rec.features)
-    existing = db.get(NoticeRow, rec.notice_id)
+    if existing is None:
+        found, missing_text = _load_existing(db, [rec.notice_id])
+        existing = found.get(rec.notice_id)
+    if missing_text is None:
+        missing_text = set()
     fields = dict(
         source=rec.source,
         notice_no=rec.notice_no,
@@ -61,12 +100,19 @@ def upsert_record(db: Session, rec: NoticeRecord) -> bool:
         photo_changed = existing.photo_url != rec.photo_url
         text_changed = (existing.features, existing.breed, existing.color, existing.age) != (
             rec.features, rec.breed, rec.color, rec.age)
-        for k, v in fields.items():
-            setattr(existing, k, v)
+        data_changed = any(
+            getattr(existing, k) != v for k, v in fields.items() if k not in ("raw_json", "collected_at")
+        )
+        need_text = text_changed or rec.notice_id in missing_text
+        if not data_changed and not need_text:
+            return False
+        if data_changed:
+            for k, v in fields.items():
+                setattr(existing, k, v)
         if photo_changed:
             existing.image_embedding_json = None
             existing.image_status = None
-        if text_changed or not existing.text_embedding_json:
+        if need_text:
             existing.text_embedding_json = dumps_emb(text_embedder.embed_text(sentence))
         return False
     db.add(
@@ -79,21 +125,18 @@ def upsert_record(db: Session, rec: NoticeRecord) -> bool:
     return True
 
 
-def _warm(db: Session, ids: list[str]) -> None:
-    for i in range(0, len(ids), 500):
-        list(db.scalars(select(NoticeRow).where(NoticeRow.notice_id.in_(ids[i : i + 500]))))
-
-
 def _collect_paged(db: Session, src, *, rows: int, pages: int, result: dict) -> dict:
     info: dict = {"source": src.name, "ok": True, "fetched": 0, "new": 0, "totals": {}, "complete": False}
     seen: dict[str, int] = {}
     try:
         for state, recs, total, _page in src.iter_pages(rows=rows, max_pages=pages):
             info["totals"][state] = total
-            _warm(db, list(dict.fromkeys(r.notice_id for r in recs)))
+            ids = list(dict.fromkeys(r.notice_id for r in recs))
+            found, missing_text = _load_existing(db, ids)
             for rec in recs:
-                if upsert_record(db, rec):
+                if upsert_record(db, rec, existing=found.get(rec.notice_id), missing_text=missing_text):
                     info["new"] += 1
+            _touch_collected(db, ids)
             db.commit()
             db.expunge_all()
             seen[state] = seen.get(state, 0) + len(recs)
@@ -177,9 +220,12 @@ def collect_notices(
             result["sources"].append({"source": src.name, "ok": False, "error": str(e)})
             continue
         new = 0
+        ids = list(dict.fromkeys(r.notice_id for r in records))
+        found, missing_text = _load_existing(db, ids)
         for rec in records:
-            if upsert_record(db, rec):
+            if upsert_record(db, rec, existing=found.get(rec.notice_id), missing_text=missing_text):
                 new += 1
+        _touch_collected(db, ids)
         db.commit()
         result["fetched"] += len(records)
         result["upserted"] += new

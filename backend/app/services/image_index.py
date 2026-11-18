@@ -10,7 +10,7 @@ from pathlib import Path
 from threading import Lock
 
 import httpx
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 
 from app.ai import image_embedder
 from app.config import get_settings
@@ -136,7 +136,11 @@ def embed_pending(db: Session, *, limit: int | None = None, chunk: int | None = 
         if budget and time.monotonic() - t0 > budget:
             stats["stopped_by_budget"] = True
             break
-        rows = list(db.scalars(select(NoticeRow).where(NoticeRow.notice_id.in_(ids[i : i + chunk]))))
+        rows = list(db.scalars(
+            select(NoticeRow)
+            .options(defer(NoticeRow.raw_json), defer(NoticeRow.text_embedding_json))
+            .where(NoticeRow.notice_id.in_(ids[i : i + chunk]))
+        ))
         s = embed_notices(db, rows, cache=False)
         for k in ("requested", "embedded", "failed"):
             stats[k] += s[k]

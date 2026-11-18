@@ -73,9 +73,9 @@ def detail_of(ms: MatchScore) -> dict:
 
 
 def matchable_notices(db: Session, *, light: bool = False) -> list[NoticeRow]:
-    heavy = [NoticeRow.raw_json]
+    heavy = [NoticeRow.raw_json, NoticeRow.image_embedding_json]
     if light:
-        heavy += [NoticeRow.text_embedding_json, NoticeRow.image_embedding_json]
+        heavy += [NoticeRow.text_embedding_json]
     base = select(NoticeRow).options(*[defer(c) for c in heavy])
     real = db.scalars(
         base.where(
