@@ -1,5 +1,3 @@
-"""서버 점수 기준값을 웹 테스트용 JSON 으로 내보내기: python -m scripts.export_scoring_fixture"""
-
 import json
 from pathlib import Path
 

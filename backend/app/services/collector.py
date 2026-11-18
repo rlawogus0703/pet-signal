@@ -1,10 +1,3 @@
-"""공고 수집기: 등록된 출처(app/sources)에서 공고를 받아 DB 에 저장.
-
-공공 API 응답에서 쓸 만한 필드(사진 popfile1/popfile2, 품종, 색상, 나이, 체중, 성별, 중성화,
-특징, 발견 장소, 보호소 이름·주소·전화, 공고 기간 등)를 모두 저장하고,
-텍스트 임베딩과 (선택) 사진 임베딩까지 계산합니다.
-"""
-
 from __future__ import annotations
 
 import json
@@ -31,7 +24,6 @@ def _now():
 
 
 def upsert_record(db: Session, rec: NoticeRecord) -> bool:
-    """공고 1건 저장. 새로 들어가면 True."""
     sentence = text_similarity.describe(rec.breed, rec.color, rec.age, rec.features)
     existing = db.get(NoticeRow, rec.notice_id)
     fields = dict(
@@ -88,13 +80,11 @@ def upsert_record(db: Session, rec: NoticeRecord) -> bool:
 
 
 def _warm(db: Session, ids: list[str]) -> None:
-    """이미 있는 공고를 한 번에 불러와 db.get 이 건마다 DB 를 다시 조회하지 않게 합니다."""
     for i in range(0, len(ids), 500):
         list(db.scalars(select(NoticeRow).where(NoticeRow.notice_id.in_(ids[i : i + 500]))))
 
 
 def _collect_paged(db: Session, src, *, rows: int, pages: int, result: dict) -> dict:
-    """페이지(최대 1000건)마다 저장·커밋하고 메모리를 비웁니다."""
     info: dict = {"source": src.name, "ok": True, "fetched": 0, "new": 0, "totals": {}, "complete": False}
     seen: dict[str, int] = {}
     try:
@@ -110,7 +100,6 @@ def _collect_paged(db: Session, src, *, rows: int, pages: int, result: dict) -> 
             info["fetched"] += len(recs)
             result["with_photo"] = result.get("with_photo", 0) + sum(1 for r in recs if r.photo_url)
             result["geocoded"] = result.get("geocoded", 0) + sum(1 for r in recs if r.found_lat is not None)
-        # 상태마다 거의 전부(98%↑) 받았을 때만 '목록에서 빠진 공고' 정리를 믿고 진행
         info["complete"] = bool(info["totals"]) and all(
             seen.get(s, 0) >= int(t * 0.98) for s, t in info["totals"].items()
         )
@@ -123,7 +112,6 @@ def _collect_paged(db: Session, src, *, rows: int, pages: int, result: dict) -> 
 
 
 def mark_stale(db: Session, source: str, run_start: datetime) -> dict:
-    """이번 수집에서 안 보인 공고(입양·반환·안락사 등으로 목록에서 빠짐)는 매칭·둘러보기에서 제외."""
     st = get_settings()
     r = db.execute(
         update(NoticeRow)
@@ -157,7 +145,7 @@ def collect_notices(
     num_of_rows: int | None = None,
     embed_images: bool | None = None,
     sources: list[NoticeSource] | None = None,
-    page_no: int | None = None,  # 예전 인자 호환 (무시)
+    page_no: int | None = None,
 ) -> dict:
     st = get_settings()
     pages = pages or st.collect_pages
@@ -203,7 +191,6 @@ def collect_notices(
     if not any(s.get("ok") for s in result["sources"]):
         result["ok"] = False
         result["error"] = "; ".join(s.get("error", "") for s in result["sources"])
-    # 실제 공고가 들어오면 예시(시드) 데이터는 매칭에서 빼고 DB 에서도 정리
     if result.get("ok") and result.get("fetched"):
         from app.services.seed import remove_seed_notices
 

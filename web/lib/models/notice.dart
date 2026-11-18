@@ -1,4 +1,3 @@
-/// 보호소 공고 (예시/수집 데이터)
 class Notice {
   final String noticeId;
   final String noticeNo;

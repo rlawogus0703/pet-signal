@@ -1,10 +1,9 @@
-// 자동 생성 파일: tools/gen_notices.py 로 생성 (직접 수정하지 마세요)
 import '../models/notice.dart';
 
-/// 시연용 예시 공고 16건 (실제 공고 아님, 사진은 Wikimedia Commons)
+
 const _url = 'https://www.animal.go.kr/front/awtis/protection/protectionList.do';
 
-/// 공고 ID → 번들 사진(assets/dogs/*.jpg)
+
 const noticePhotoAssets = <String, String>{
   'N20261102001': 'assets/dogs/mix_cream.jpg',
   'N20261103002': 'assets/dogs/maltese_white.jpg',

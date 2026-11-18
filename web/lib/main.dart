@@ -4,8 +4,7 @@ import 'screens/shell.dart';
 import 'state/app_state.dart';
 import 'theme/app_theme.dart';
 
-/// 펫 시그널 웹 (10조 · 재현)
-/// 기본: Mock 모드. --dart-define=API_BASE_URL=... 로 빌드하면 API 모드로 시작.
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(PetSignalApp(state: AppState()));
@@ -29,9 +28,7 @@ class PetSignalApp extends StatelessWidget {
   }
 }
 
-/// URL 파라미터: ?tab=1 처럼 탭만 엽니다 (0 홈, 1 가까운 공고, 2 등록…).
-/// ?about=1 이면 서비스 소개 화면을 엽니다.
-/// 로그인·회원가입은 직접 해야 하며, 가까운 공고는 로그인 없이 볼 수 있어요.
+
 class _Bootstrap extends StatefulWidget {
   const _Bootstrap({required this.child});
   final Widget child;

@@ -1,5 +1,3 @@
-"""수집이 한 번에 하나만 돌도록 잠급니다 (프로세스 안 + Postgres advisory lock)."""
-
 from __future__ import annotations
 
 import logging
@@ -12,13 +10,11 @@ from app.database import engine
 log = logging.getLogger("petsignal")
 
 _collect_lock = threading.Lock()
-# PostgreSQL 세션 레벨 advisory lock 에 쓰는 고정 키 (펫시그널)
 _COLLECT_LOCK_ID = 74628401
 _lock_conn = None
 
 
 def acquire_collect_lock() -> bool:
-    """프로세스 안에서는 threading.Lock, Postgres 에서는 advisory lock 으로 한 번에 하나만 수집."""
     global _lock_conn
     if not _collect_lock.acquire(blocking=False):
         return False

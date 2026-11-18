@@ -1,5 +1,3 @@
-"""관리자 API 키 보호 테스트."""
-
 import pytest
 from fastapi.testclient import TestClient
 

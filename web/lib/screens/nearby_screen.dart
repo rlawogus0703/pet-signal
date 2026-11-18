@@ -9,11 +9,11 @@ import '../utils/geolocation.dart';
 import '../widgets/common.dart';
 import 'notice_detail_screen.dart';
 
-/// 로그인 없이 주변 보호소 공고를 거리순으로 봅니다.
+
 class NearbyScreen extends StatefulWidget {
   const NearbyScreen({super.key, this.embedded = false});
 
-  /// 홈 상단에 넣을 때: 일부만 보여주고 '모두 보기'로 탭을 엽니다.
+
   final bool embedded;
 
   @override
@@ -70,7 +70,7 @@ class _NearbyScreenState extends State<NearbyScreen> {
 
   Future<void> _bootstrap() async {
     await _reload(reset: true);
-    // 홈/첫 화면에서 위치를 한 번 요청. 거부되면 서울(또는 마지막 선택) 유지.
+
     if (!mounted) return;
     await _tryGps(silent: true);
   }

@@ -1,13 +1,11 @@
-# 펫 시그널 (Pet Signal) — 공유 REST API 명세 (초안)
+# 펫 시그널 (Pet Signal) — REST API 설명
 
-> 팀: **10조** · 클라이언트: 재현(웹), 민재(앱) · 백엔드: FastAPI (담당 TBD)
->
-> **중요**: 매칭 결과는 동일 개체로 단정하지 않으며 항상 **「유사 후보」**로 표시한다.
-> 최종 확인은 공고 원문·사진을 본 보호자와 보호소가 수행한다.
+매칭 결과는 같은 개라고 단정하지 않고, 항상 **유사 후보**로 표시합니다.
+최종 확인은 공고 원문과 사진을 본 보호자와 보호소가 합니다.
 
 - Base URL (로컬): `http://127.0.0.1:8000`
 - Content-Type: `application/json`
-- 인증: 시연용은 없음 (추후 보호자 계정 추가 예정)
+- 인증: JWT (회원가입/로그인). 공고 둘러보기는 인증 없이 가능합니다.
 
 ---
 
@@ -18,7 +16,7 @@
 | 필드 | 타입 | 설명 |
 |------|------|------|
 | id | string (uuid) | 서버 발급 |
-| photo_url | string \| null | 사진 URL (시연은 플레이스홀더 가능) |
+| photo_url | string \| null | 사진 URL (없으면 null) |
 | breed | string | 품종 (예: 말티즈) |
 | color | string | 색상 (예: 흰색) |
 | features | string | 특징 문구 |
@@ -31,7 +29,7 @@
 
 ### ScoreBreakdown (규칙 점수 100점 + 예전 필드)
 
-순위 기준은 **규칙 점수 100점** (민재 앱과 같은 기준). 일치 근거를 합산한 점수이며 동일견일 확률이 아닙니다.
+순위 기준은 **규칙 점수 100점**입니다. 일치 근거를 합산한 점수이며 동일견일 확률이 아닙니다.
 
 | 필드 | 설명 |
 |------|------|
@@ -106,9 +104,9 @@
 
 ```json
 {
-  "email": "jaehyun@example.com",
+  "email": "user@example.com",
   "password": "pass1234",
-  "name": "재현",
+  "name": "홍길동",
   "phone": "010-1111-2222"
 }
 ```
@@ -121,8 +119,8 @@
   "token_type": "bearer",
   "user": {
     "id": "u-uuid",
-    "email": "jaehyun@example.com",
-    "name": "재현",
+    "email": "user@example.com",
+    "name": "홍길동",
     "phone": "010-1111-2222",
     "created_at": "2026-11-09T13:00:00"
   }
@@ -132,7 +130,7 @@
 ### `POST /auth/login`
 
 ```json
-{ "email": "jaehyun@example.com", "password": "pass1234" }
+{ "email": "user@example.com", "password": "pass1234" }
 ```
 
 응답 형식은 signup과 동일.
@@ -301,7 +299,7 @@ Header: `Authorization: Bearer <token>`
 
 ---
 
-## 매칭 점수 (규칙 점수 100점, 민재 앱과 같은 기준)
+## 매칭 점수 (규칙 점수 100점)
 
 ```
 points = 품종 30 + 색상 25 + 지역 20 + 특징 15 + 날짜 10   (항목마다 만점 또는 0점)

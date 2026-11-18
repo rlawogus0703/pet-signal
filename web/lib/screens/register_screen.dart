@@ -330,7 +330,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         TextFormField(
           controller: _address,
           decoration: const InputDecoration(
-              labelText: '상세 위치', hintText: '예: 양산동 한신대학교 정문 앞', prefixIcon: Icon(Icons.place_outlined)),
+              labelText: '상세 위치', hintText: '예: 오산시 양산동 정문 앞', prefixIcon: Icon(Icons.place_outlined)),
         ),
         Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),

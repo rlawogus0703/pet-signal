@@ -1,10 +1,3 @@
-"""매칭 점수.
-
-순위는 규칙 점수 100점(app/services/rule_points.py, 김민재 앱과 같은 기준: 품종 30 · 색상 25 ·
-지역 20 · 특징 15 · 날짜 10)으로 정합니다. 아래의 규칙(0~1)·텍스트·사진 멀티모달 점수 코드는
-성능평가(backend/eval)용으로 남겨 두었고 순위에는 쓰지 않습니다.
-"""
-
 from __future__ import annotations
 
 import json
@@ -44,7 +37,6 @@ def breed_score(a: str, b: str) -> float:
 
 
 def color_score(a: str, b: str) -> float:
-    """색상 집합 비교: 같음 1.0 · 일부 공유 0.9 · 이웃 색 0.85 · 다름 0."""
     ca, cb = color_set(a), color_set(b)
     if not ca or not cb:
         ta, tb = (a or "").strip(), (b or "").strip()
@@ -89,7 +81,6 @@ def date_score(days: int) -> float:
 
 
 def feature_score(a: str, b: str) -> float:
-    """특징 키워드 점수 (텍스트 갈래의 keyword 와 같은 값)."""
     return text_similarity.keyword_score(a, b)
 
 
@@ -108,7 +99,6 @@ def age_score(a: str | None, b: str | None) -> float:
 
 
 def signed_date_score(day_diff: int) -> float:
-    """day_diff = 발견일 - 실종일. 실종 전에 발견된 공고(2일 이상 앞)는 낮게."""
     if day_diff < -1:
         return 0.1
     return date_score(abs(day_diff))
@@ -137,7 +127,7 @@ class MatchScore:
     image_status: str = "no_user_photo"
     common_keywords: list[str] = field(default_factory=list)
     matched_attributes: list[str] = field(default_factory=list)
-    points: RulePoints | None = None  # 규칙 점수 100점 (순위 기준)
+    points: RulePoints | None = None
 
 
 def _infer_method(a: list[float] | None, b: list[float] | None) -> str:
@@ -172,7 +162,6 @@ def score_pair(
     dog_region: str | None = None,
     notice_region: str | None = None,
 ) -> MatchScore:
-    # ── 규칙 기반 ──
     b = breed_score(dog_breed, notice_breed)
     c = color_score(dog_color, notice_color)
     if notice_lat is not None and notice_lng is not None:
@@ -185,7 +174,6 @@ def score_pair(
     a = age_score(dog_age, notice_age)
     rule = rule_score({"breed": b, "color": c, "distance": d, "date": dt, "age": a})
 
-    # ── 텍스트 기반 ──
     tr = text_similarity.text_similarity(
         dog_features=dog_features,
         dog_sentence=text_similarity.describe(dog_breed, dog_color, dog_age, dog_features),
@@ -196,7 +184,6 @@ def score_pair(
         notice_emb=notice_text_emb,
     )
 
-    # ── 이미지 기반 ──
     method = image_method or _infer_method(dog_image_emb, notice_image_emb)
     img = image_embedder.similarity(dog_image_emb, notice_image_emb, method)
     if img is not None:
@@ -213,7 +200,6 @@ def score_pair(
         img_for_fusion = MISSING_IMAGE_NEUTRAL
     total = final_score(rule, tr.score, img_for_fusion)
 
-    # ── 추천 이유 ──
     reasons: list[str] = []
     if b >= 0.99:
         reasons.append(f"품종 일치 ({dog_breed} ↔ {notice_breed})")

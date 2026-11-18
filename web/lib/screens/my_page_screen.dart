@@ -39,7 +39,7 @@ class MyPageScreen extends StatelessWidget {
                 Text(u.email, style: const TextStyle(color: AppColors.subtext)),
                 const SizedBox(height: 8),
                 Wrap(spacing: 6, runSpacing: 6, children: [
-                  MatchChip(label: s.useApi ? 'API 서버 계정' : 'Mock 시연 계정', icon: Icons.verified_user_outlined),
+                  MatchChip(label: s.useApi ? 'API 서버 계정' : 'Mock 계정', icon: Icons.verified_user_outlined),
                   MatchChip(label: '가입 ${ymd(u.createdAt)}', icon: Icons.calendar_today_outlined),
                   if (u.phone != null && u.phone!.isNotEmpty) MatchChip(label: u.phone!, icon: Icons.phone_outlined),
                 ]),

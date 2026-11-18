@@ -1,5 +1,3 @@
-"""로그인 없이 주변 공고 조회 + 사진 없이 실종견 등록."""
-
 from datetime import date, timedelta
 
 from fastapi.testclient import TestClient
@@ -22,7 +20,6 @@ def test_candidate_urls_https_first():
 
 
 def test_looks_like_image():
-    # JPEG magic
     assert looks_like_image(b"\xff\xd8\xff" + b"\x00" * 30)
     assert looks_like_image(b"\x89PNG\r\n\x1a\n" + b"\x00" * 30)
     assert not looks_like_image(b"<html>not an image</html>")
@@ -81,7 +78,7 @@ def test_nearby_and_register_without_photo(tmp_path):
         r = client.get("/api/v1/notices/nearby", params={"lat": 37.5665, "lng": 126.9780})
         assert r.status_code == 200, r.text
         body = r.json()
-        assert body["total"] == 2  # real notices only
+        assert body["total"] == 2
         assert [i["notice_id"] for i in body["items"]][0] == "N1"
         assert body["items"][0]["dist_km"] is not None
         assert body["items"][0]["shelter_name"] == "서울 보호소"
@@ -106,7 +103,6 @@ def test_nearby_and_register_without_photo(tmp_path):
         assert r.status_code == 200
         assert r.json()["shelter_phone"] == "02-111-1111"
 
-        # 사진 없이 등록 → 규칙 점수 100점으로 순위
         r = client.post("/api/v1/lost-dogs", json=dict(
             breed="말티즈", color="흰색", features="소형, 목걸이", age="3살",
             lost_date="2026-11-11", lost_lat=37.57, lost_lng=126.98, lost_address="서울 종로구",

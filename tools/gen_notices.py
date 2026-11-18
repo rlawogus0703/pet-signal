@@ -1,15 +1,9 @@
-"""시연용 예시 공고 16건을 한 곳에서 정의하고
-- backend/data/seed_notices.json (서버 시드)
-- web/lib/data/mock_data.dart (웹 Mock)
-두 곳에 똑같이 생성합니다.  실행: python tools/gen_notices.py
-"""
 import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 URL = "https://www.animal.go.kr/front/awtis/protection/protectionList.do"
 
-# (id, 공고번호, 품종, 색상, 나이, 특징, 발견일, lat, lng, 발견장소, 보호소, 전화, 사진)
 N = [
  ("N20261102001","경기-오산-2026-00412","믹스견","크림색","2~3년","소형, 귀가 접힘, 빨간 목걸이 흔적, 왼쪽 귀 근처 점, 사람을 잘 따름","2026-11-02",37.1499,127.0697,"경기도 오산시 원동 오산천 산책로","오산시 동물보호센터","031-8036-7614","mix_cream"),
  ("N20261103002","경기-화성-2026-01187","말티즈","흰색","3살","소형견, 빨간 목걸이, 겁이 많음","2026-11-03",37.2167,126.9487,"경기도 화성시 봉담읍 와우리","화성시 동물보호센터","031-8015-4421","maltese_white"),
@@ -33,7 +27,6 @@ from datetime import date, timedelta
 
 
 def care_addr(addr):
-    # 예시 보호소 주소 (시·군·구까지만 실제, 나머지는 예시)
     return " ".join(addr.split()[:2]) + " (예시 보호소 주소)"
 
 
@@ -52,11 +45,8 @@ for (nid,no,breed,color,age,feat,d,lat,lng,addr,sh,ph,photo) in N:
 (ROOT/"backend/data/seed_notices.json").write_text(json.dumps(seed,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
 
 def q(s): return "'" + s.replace("'", "\\'") + "'"
-lines = ["// 자동 생성 파일: tools/gen_notices.py 로 생성 (직접 수정하지 마세요)",
- "import '../models/notice.dart';","",
- "/// 시연용 예시 공고 16건 (실제 공고 아님, 사진은 Wikimedia Commons)",
+lines = ["import '../models/notice.dart';","",
  "const _url = " + q(URL) + ";","",
- "/// 공고 ID → 번들 사진(assets/dogs/*.jpg)",
  "const noticePhotoAssets = <String, String>{"]
 for n in N: lines.append(f"  {q(n[0])}: {q('assets/dogs/'+n[12]+'.jpg')},")
 lines += ["};","","List<Notice> exampleNotices() => [",]

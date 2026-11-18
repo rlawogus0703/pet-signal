@@ -1,9 +1,3 @@
-"""농림축산식품부 농림축산검역본부 구조동물 조회 서비스 v2 (공공데이터포털 15098931).
-
-https://www.data.go.kr/data/15098931/openapi.do
-엔드포인트: {base}/abandonmentPublic_v2
-"""
-
 from __future__ import annotations
 
 import logging
@@ -44,7 +38,6 @@ def parse_item(it: dict) -> NoticeRecord | None:
     org = _s(it.get("orgNm"))
     happen = _s(it.get("happenPlace"))
     care_addr = _s(it.get("careAddr"))
-    # 발견 위치: 관할(orgNm)+발견장소 → 없으면 보호소 주소
     g = geocode(f"{org} {happen}".strip()) or geocode(care_addr)
     breed = _s(it.get("kindNm")) or _s(it.get("kindCd"))
     kind_full = _s(it.get("kindFullNm"))
@@ -109,7 +102,6 @@ class AnimalProtectionSource(NoticeSource):
         return bool(self.service_key)
 
     def _get_page(self, client: httpx.Client, params: dict) -> tuple[list[dict], int]:
-        """한 페이지 요청 (일시 오류는 2번까지 다시 시도). 키는 에러 메시지에 남기지 않습니다."""
         url = f"{self.base}/abandonmentPublic_v2"
         last: Exception | None = None
         for attempt in range(3):
@@ -119,7 +111,6 @@ class AnimalProtectionSource(NoticeSource):
                 try:
                     payload = resp.json()
                 except ValueError:
-                    # 키 오류 등은 XML 로 옵니다 (키는 로그에 남기지 않음)
                     snippet = resp.text[:200].replace(self.service_key, "***")
                     raise RuntimeError(f"공공 API 응답이 JSON 이 아닙니다: {snippet}")
                 items, total, code, msg = extract_items(payload)
@@ -132,12 +123,6 @@ class AnimalProtectionSource(NoticeSource):
         raise last or RuntimeError("공공 API 요청 실패")
 
     def state_params(self, state: str) -> dict:
-        """상태별 조회 조건.
-
-        - notice(공고중): 기간 제한 없이 전부 (보통 1,300건 안팎)
-        - protect(공고가 끝났지만 아직 보호소에 있는 아이): 최근 N일 공고만
-          (오래된 장기 보호 공고까지 다 받으면 1만 건이 넘어 무료 서버에 부담)
-        """
         p: dict = {"state": state}
         if state == "protect":
             st = get_settings()
@@ -147,10 +132,6 @@ class AnimalProtectionSource(NoticeSource):
         return p
 
     def iter_pages(self, *, states: list[str] | None = None, rows: int = 1000, max_pages: int = 20):
-        """상태(공고중·보호중)별로 끝 페이지까지 받아 페이지 단위로 돌려줍니다 (메모리 절약).
-
-        yield (state, records, total_count, page_no)
-        """
         if not self.service_key:
             raise RuntimeError("SERVICE_KEY not set")
         states = states or list(get_settings().collect_state_list)
@@ -178,7 +159,6 @@ class AnimalProtectionSource(NoticeSource):
                 client.close()
 
     def fetch(self, *, pages: int = 1, rows: int = 100) -> tuple[list[NoticeRecord], dict]:
-        """예전 방식(한 번에 목록으로). 새 수집기는 iter_pages 를 씁니다."""
         out: list[NoticeRecord] = []
         totals: dict = {}
         for state, recs, total, _ in self.iter_pages(rows=rows, max_pages=pages):

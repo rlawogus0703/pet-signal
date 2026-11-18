@@ -1,5 +1,3 @@
-"""전국 보호 중 공고 전체 수집: 페이지 단위 저장, 목록에서 빠진 공고 제외, 사진 임베딩 나눠 하기."""
-
 from datetime import date
 
 from sqlalchemy import create_engine
@@ -54,7 +52,6 @@ def test_paged_collect_and_stale(tmp_path):
     assert r["fetched"] == 55 and info["complete"] and info["totals"] == {"notice": 25, "protect": 30}
     assert len(matchable_notices(db)) == 55
 
-    # 다음 수집에서 N0~N4 가 빠지면(입양 등) 매칭·둘러보기에서 제외
     src2 = PagedSource(list(range(5, 25)), list(range(100, 130)))
     r2 = collector.collect_notices(db, sources=[src2], num_of_rows=10, embed_images=False)
     assert r2["sources"][0]["marked_stale"] == 5
@@ -62,7 +59,6 @@ def test_paged_collect_and_stale(tmp_path):
     assert len(ids) == 50 and "N0" not in ids
     assert db.get(NoticeRow, "N0").process_state == STALE_STATE
 
-    # 다시 나타나면 복귀
     collector.collect_notices(db, sources=[src], num_of_rows=10, embed_images=False)
     assert len(matchable_notices(db)) == 55
 

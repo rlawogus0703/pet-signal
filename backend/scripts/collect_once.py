@@ -1,8 +1,3 @@
-"""공공 API 1회 수집 (키 확인용): python -m scripts.collect_once --rows 20
-
-backend/.env 의 SERVICE_KEY 를 사용합니다. 수집 후 사진 임베딩까지 계산하고 요약을 출력합니다.
-"""
-
 import argparse
 import json
 import logging
@@ -15,7 +10,7 @@ from app.services.collector import collect_notices
 
 def main() -> None:
     make_console_safe()
-    logging.getLogger("httpx").setLevel(logging.WARNING)  # URL 에 인증키가 있어 숨김
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     ap = argparse.ArgumentParser()
     ap.add_argument("--pages", type=int, default=1)
     ap.add_argument("--rows", type=int, default=20)

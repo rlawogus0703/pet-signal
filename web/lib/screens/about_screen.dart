@@ -4,7 +4,7 @@ import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 
-/// 발표·학회용 서비스 소개: 통계, 문제/해결, 정규화 예시, 동작 방식, 시스템 구성도
+
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
@@ -84,17 +84,6 @@ class _AboutHeader extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(99),
-              border: Border.all(color: Colors.white24),
-            ),
-            child: const Text('2026 한국디지털콘텐츠학회 추계종합학술대회 · 10조',
-                style: TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w600)),
-          ),
-          const SizedBox(height: 18),
           Text(
             '서비스 소개',
             style: TextStyle(
@@ -146,7 +135,7 @@ class _Stats extends StatelessWidget {
       _Stat('95,685', '마리', '2025년 전국 동물보호센터에\n입소한 유실·유기동물', '농림축산식품부 2025 실태조사'),
       _Stat('매일', '', '공공데이터 API로\n보호소 공고 자동 수집', '농림축산검역본부 구조동물 API'),
       _Stat('100', '점', '규칙 점수\n품종·색상·지역·특징·날짜', '앱·웹 같은 기준'),
-      _Stat('Top 5', '', '상위 5개 후보 안에\n실제 강아지 포함 여부로 평가', '논문 평가 지표'),
+      _Stat('Top 5', '', '상위 5개 후보 안에\n실제 강아지 포함 여부로 평가', '평가 지표'),
     ]);
   }
 }
@@ -247,7 +236,7 @@ class _NormalizationShowcase extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionTitle('표기 정규화가 만드는 차이', subtitle: '논문 예시: 보호자는 “흰색 말티즈”, 보호소는 “크림색 믹스견”'),
+          const SectionTitle('표기 정규화가 만드는 차이', subtitle: '예시: 보호자는 “흰색 말티즈”, 보호소는 “크림색 믹스견”'),
           const SizedBox(height: 24),
           Flex(
             direction: narrow ? Axis.vertical : Axis.horizontal,
@@ -370,14 +359,14 @@ class _Footer extends StatelessWidget {
     return const Padding(
       padding: EdgeInsets.symmetric(vertical: 12),
       child: Text(
-        '펫 시그널은 “유사 후보”를 제안할 뿐 같은 개체로 단정하지 않습니다. 시연용 공고·사진은 예시 데이터입니다 (사진: Wikimedia Commons).\n© 2026 10조 · 한신대학교',
+        '펫 시그널은 “유사 후보”를 제안할 뿐 같은 개체로 단정하지 않습니다. 예시 공고·사진은 샘플 데이터입니다 (사진: Wikimedia Commons).',
         style: TextStyle(fontSize: 12, color: AppColors.subtext, height: 1.6),
       ),
     );
   }
 }
 
-/// 시스템 구성도: 사용자 입력 → 실종견 DB + 공공데이터 API → 일치 비교 → 규칙 점수 100점 → 매칭 추천
+
 class SystemDiagram extends StatelessWidget {
   const SystemDiagram({super.key});
 

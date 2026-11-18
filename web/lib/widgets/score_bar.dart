@@ -4,7 +4,7 @@ import '../matching/explain.dart';
 import '../models/score_breakdown.dart';
 import '../theme/app_theme.dart';
 
-/// 항목별 점수 막대 (순차 애니메이션)
+
 class ScoreBar extends StatelessWidget {
   const ScoreBar({super.key, required this.item, this.delay = Duration.zero, this.labelWidth = 104, this.color});
   final ScoreItem item;
@@ -117,11 +117,10 @@ class _DelayedBarState extends State<_DelayedBar> {
 }
 
 
-/// 규칙 점수 색 (김민재 앱처럼 짙은 청록)
 const ruleTeal = Color(0xFF0F6E62);
 const ruleTealSoft = Color(0xFFD5ECE7);
 
-/// 상세 화면: 항목 카드 (이름 · NN/MM점 · 막대 · 한 줄 근거) — 김민재 앱 상세 화면과 같은 구성
+
 class RulePointRow extends StatelessWidget {
   const RulePointRow({super.key, required this.item, this.delay = Duration.zero});
   final RuleItem item;
@@ -152,7 +151,7 @@ class RulePointRow extends StatelessWidget {
   }
 }
 
-/// 목록 카드: 다섯 항목 작은 막대 (이름 · 막대 · NN/MM)
+
 class RulePointsMini extends StatelessWidget {
   const RulePointsMini({super.key, required this.items});
   final List<RuleItem> items;

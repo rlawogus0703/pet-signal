@@ -1,5 +1,3 @@
-"""교수님 피드백 구성도(텍스트·이미지·멀티모달) 관련 테스트."""
-
 import base64
 import json
 from datetime import date
@@ -53,7 +51,6 @@ def light_mode():
     image_embedder.force_light_mode(False)
 
 
-# ── 수집기 파싱 ──
 def test_parse_public_api_item_keeps_all_fields():
     rec = parse_item(SAMPLE_ITEM)
     assert rec.photo_url.endswith("a.jpg") and rec.photo_url2.endswith("b.jpg")
@@ -63,7 +60,7 @@ def test_parse_public_api_item_keeps_all_fields():
     assert rec.care_addr.startswith("경기도 성남시 분당구")
     assert rec.notice_start == date(2026, 11, 14) and rec.notice_end == date(2026, 11, 24)
     assert rec.found_address == "경기도 성남시 상적동 96-7"
-    assert rec.found_lat and 37.3 < rec.found_lat < 37.5  # 성남시 중심 좌표
+    assert rec.found_lat and 37.3 < rec.found_lat < 37.5
 
 
 def test_extract_items_single_and_list():
@@ -91,12 +88,11 @@ def test_geocode_levels():
     assert geocode("상적동 96-7") is None
 
 
-# ── 텍스트 갈래 ──
 def test_text_branch_parts():
     a = "소형, 귀가 접힘, 빨간 목걸이, 사람을 잘 따름"
     b = "소형견, 빨간 목줄 착용, 온순함"
     kw = text_similarity.keyword_score(a, b)
-    assert kw > 0.3  # 소형/소형견, 목걸이/목줄 동의어
+    assert kw > 0.3
     attr, matched = text_similarity.attribute_score(a, b)
     assert attr == 1.0 and "성향" in matched and "목걸이" in matched
     attr2, _ = text_similarity.attribute_score("목걸이 있음", "목줄 없음")
@@ -105,7 +101,6 @@ def test_text_branch_parts():
     assert 0 < sem < 1
 
 
-# ── 이미지 갈래 ──
 def test_light_image_features_from_real_photos():
     a = (DOGS / "maltese_white.jpg").read_bytes()
     fa, m = image_embedder.embed_bytes(a)
@@ -116,7 +111,7 @@ def test_light_image_features_from_real_photos():
     fc, _ = image_embedder.embed_bytes((DOGS / "bichon.jpg").read_bytes())
     s_black = image_embedder.similarity(fa, fb, m)
     s_white = image_embedder.similarity(fa, fc, m)
-    assert s_white > s_black  # 흰 말티즈는 흰 비숑과 더 비슷, 검은 믹스와 덜 비슷
+    assert s_white > s_black
 
 
 def test_fetch_failure_is_graceful():
@@ -130,7 +125,6 @@ def test_https_first_for_animal_go_kr():
     assert urls[0].startswith("https://")
 
 
-# ── 멀티모달 융합 ──
 def test_fusion_rules():
     assert final_score(0.8, 0.6, None) == pytest.approx((0.45 * 0.8 + 0.25 * 0.6) / 0.70)
     assert final_score(0.8, 0.6, 0.9) == pytest.approx(0.45 * 0.8 + 0.25 * 0.6 + 0.30 * 0.9)
@@ -138,7 +132,6 @@ def test_fusion_rules():
 
 
 def test_web_fixture_is_up_to_date():
-    """서버 계산값 = web/test/fixtures/scoring_cases.json (웹 스코어러가 같은 값을 내는지 웹 테스트가 확인)."""
     saved = json.loads((ROOT / "web" / "test" / "fixtures" / "scoring_cases.json").read_text(encoding="utf-8"))
     now = json.loads(json.dumps(compute_cases(), ensure_ascii=False))
     for a, b in zip(saved["cases"], now["cases"]):
@@ -150,13 +143,12 @@ def test_web_fixture_is_up_to_date():
     assert saved["image"]["similarity"] == pytest.approx(now["image"]["similarity"])
 
 
-# ── API 전체 흐름 (가짜 공공 API 소스 + 사진 업로드) ──
 class FakeSource(NoticeSource):
     name = "fake"
 
     def fetch(self, *, pages, rows):
         rec = parse_item(SAMPLE_ITEM)
-        rec.photo_url = str(DOGS / "mix_black.jpg")  # 로컬 파일로 다운로드 대체
+        rec.photo_url = str(DOGS / "mix_black.jpg")
         rec.photo_url2 = None
         rec2 = NoticeRecord(
             notice_id="FAKE2", source="fake", breed="말티즈", color="흰색", age="3살",
@@ -201,10 +193,9 @@ def test_api_flow_with_photo_and_collect(tmp_path, monkeypatch):
         dog = r.json()
         assert dog["has_photo"] and dog["photo_proxy_url"]
         items = c.get(f"/api/v1/lost-dogs/{dog['id']}/candidates").json()["items"]
-        assert [it["notice_id"] for it in items][0] == "FAKE2"  # 실제 공고가 있으면 시드 제외 + 말티즈 1위
+        assert [it["notice_id"] for it in items][0] == "FAKE2"
         assert all(it["source"] != "seed" for it in items)
         top = items[0]
-        # 순위는 규칙 점수 100점 (김민재 앱 기준): 품종 30 · 색상 25 · 지역 20 · 특징 15 · 날짜 10
         sc = top["score"]
         assert sc["max_points"] == 100
         assert [it["key"] for it in sc["items"]] == ["breed", "color", "region", "features", "date"]
@@ -213,10 +204,9 @@ def test_api_flow_with_photo_and_collect(tmp_path, monkeypatch):
         assert sc["items"][2]["reason"] == "같음 (경기 성남시)"
         assert sc["caption"].startswith("일치 근거를 합산한 점수")
         assert top["final_score"] == pytest.approx(1.0)
-        # 텍스트·사진 유사도는 순위에 쓰지 않음
         assert top["image_score"] is None and top["text_score"] is None
         second = items[1]["score"]
-        assert second["points"] == 55  # 믹스견(품종 0) · 흰색 공통 25 · 성남시 20 · 특징 0 · 날짜 10
+        assert second["points"] == 55
         assert items[1]["rank"] == 2
         assert top["notice_start"] == "2026-11-12" and top["shelter_address"] == "경기도 성남시"
         assert any(x.startswith("품종 30/30점") for x in top["reasons"])

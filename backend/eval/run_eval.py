@@ -1,20 +1,3 @@
-"""펫 시그널 Top-K 성능평가 (오프라인, 운영 DB·계정 사용 안 함).
-
-    cd backend
-    pip install -r eval/requirements.txt      # matplotlib, numpy (평가 전용)
-    python -m eval.run_eval                    # 저장된 공고 스냅샷으로 평가
-    python -m eval.run_eval --refresh-pool     # 공공 API 에서 공고를 새로 받아 평가 (DATA_GO_KR_SERVICE_KEY 필요)
-
-비교하는 방법
-  baseline_strict : 기존 조건 검색 — 품종 글자 일치 + 색 글자 포함 + 시·군·구 일치 + 기간, 최신순 정렬
-  baseline_breed  : 관대한 기존 검색 — 품종을 드롭다운처럼 정규화해서 비교(믹스=믹스견, 진도=진도견) + 시·군·구 + 기간, 색 조건 없음, 최신순
-  baseline_region : 지역 둘러보기 — 시·군·구 + 기간만 걸고 최신순 (보호자가 우리 동네 공고를 전부 넘겨보는 경우)
-  rule            : 펫 시그널 규칙 점수만 (품종·색 정규화, 거리, 날짜, 나이)
-  rule_text       : 규칙 + 텍스트 (0.45 : 0.25 로 다시 나눔)
-  full            : 규칙 0.45 + 텍스트 0.25 + 사진 0.30 (Render 와 같은 경량 color-hist+dhash)
-점수 계산은 서비스 코드(app.services.matcher.score_pair, app.ai.fusion)를 그대로 불러 씁니다.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -43,7 +26,7 @@ from eval.synth import LEVELS, SEED, Query, build_queries, degrade, notice_regio
 HERE = Path(__file__).resolve().parent
 RESULTS = HERE / "results"
 KS = (1, 5, 10)
-BASELINE_DAYS = 30  # 기존 검색: 실종일부터 30일 동안 올라온 공고
+BASELINE_DAYS = 30
 METHODS = ["baseline_strict", "baseline_breed", "baseline_region", "rule", "rule_text", "full"]
 METHOD_KO = {
     "baseline_strict": "기존 조건 검색 (품종+색+지역+기간)",
@@ -55,7 +38,6 @@ METHOD_KO = {
 }
 LIGHT = image_embedder.METHOD_LIGHT
 
-# 작업 프로세스가 공유하는 전역 (fork)
 _POOL: list[dict] = []
 _FEATS: dict = {}
 
@@ -84,14 +66,13 @@ def score_query(args) -> tuple[np.ndarray, np.ndarray, np.ndarray, float]:
         rule[j], text[j] = ms.rule, ms.text
         if ms.image is not None:
             img[j] = ms.image
-        if j % 97 == 0:  # 아래 numpy 융합이 서비스 total 과 같은지 표본 검사
+        if j % 97 == 0:
             mine = fuse(rule[j : j + 1], text[j : j + 1], img[j : j + 1], q_img is not None)[0]
             max_err = max(max_err, abs(mine - ms.total))
     return rule, text, img, max_err
 
 
 def fuse(rule, text, img, has_photo: bool, w: dict | None = None) -> np.ndarray:
-    """app.ai.fusion.final_score 와 같은 계산 (가중치만 바꿔 볼 수 있게 numpy 로)."""
     w = w or MODAL_WEIGHTS
     if not has_photo or w["image"] == 0:
         den = w["rule"] + w["text"]
@@ -102,12 +83,10 @@ def fuse(rule, text, img, has_photo: bool, w: dict | None = None) -> np.ndarray:
 
 
 def rank_of(scores: np.ndarray, t: int) -> int:
-    """정답 순위 (동점은 정답에 불리하게: 같은 점수인 다른 공고를 모두 앞에 둠)."""
     return int(1 + np.sum(scores >= scores[t]) - 1)
 
 
 def baseline_ranks(q: Query, pool: list[dict], t: int) -> dict[str, tuple[float, int]]:
-    """(정답 순위 또는 inf, 결과 목록 길이)."""
     end = q.lost_date + timedelta(days=BASELINE_DAYS)
     breed_key = q.breed.replace(" ", "")
     color_key = q.color.split()[0] if q.color.split() else ""
@@ -132,7 +111,7 @@ def baseline_ranks(q: Query, pool: list[dict], t: int) -> dict[str, tuple[float,
                 if not unknown_breed and norm_breed(n["breed"]) != q_breed_norm:
                     continue
             hits.append(j)
-        hits.sort(key=lambda j: (pool[j]["_fd"], pool[j]["notice_id"]), reverse=True)  # 최신순
+        hits.sort(key=lambda j: (pool[j]["_fd"], pool[j]["notice_id"]), reverse=True)
         r = math.inf
         if t in hits:
             r = hits.index(t) + 1
@@ -184,7 +163,6 @@ def main(argv=None) -> int:
         feats = images.build_notice_feats(pool, keep_bytes_for={q.true_id for q in queries})
     _POOL, _FEATS = pool, feats
 
-    # 질의 사진 만들기
     q_imgs: list = []
     for q in queries:
         emb = None
@@ -236,7 +214,6 @@ def main(argv=None) -> int:
             "image_score_true": "" if np.isnan(img[t]) else round(float(img[t]), 3),
         })
 
-    # 요약
     summary = {"overall": {}, "by_level": {lv: {} for lv in LEVELS}, "photo_queries": {}}
     levels = [q.level for q in queries]
     has_photo = [e is not None for e in q_imgs]
@@ -249,7 +226,6 @@ def main(argv=None) -> int:
         k: float(np.mean([r[f"{k}_list_len"] for r in rows])) for k in ("baseline_strict", "baseline_breed", "baseline_region")
     }
 
-    # 가중치 민감도 (규칙 : 텍스트 : 사진)
     grid = [
         (0.45, 0.25, 0.30), (0.60, 0.20, 0.20), (0.34, 0.33, 0.33), (0.30, 0.20, 0.50),
         (0.50, 0.50, 0.00), (0.70, 0.30, 0.00), (0.55, 0.15, 0.30), (0.40, 0.40, 0.20),
@@ -261,7 +237,6 @@ def main(argv=None) -> int:
         mm = metrics(rk)
         sens.append({"rule": wr, "text": wt, "image": wi, **{k: mm[k] for k in ("top1", "top5", "top10", "mrr")}})
 
-    # 누적 Top-K 곡선
     curve = {}
     for m in METHODS:
         rr = np.array(per_q[m], dtype=float)

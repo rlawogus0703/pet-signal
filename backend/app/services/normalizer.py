@@ -1,15 +1,8 @@
-"""품종·색상·나이·특징 표기 정규화.
-
-웹(web/lib/matching/normalizer.dart)과 같은 규칙을 씁니다. 한쪽을 고치면 다른 쪽도 같이 고쳐 주세요.
-(backend/tests/test_alignment.py 가 웹 테스트용 기준값을 검사합니다.)
-"""
-
 from __future__ import annotations
 
 import re
 from datetime import date
 
-# 순서 중요: 앞에 있는 키가 먼저 매칭됩니다 (예: 래브라도 → 리트리버보다 먼저)
 BREED_SYNONYMS = {
     "말티즈": "maltese",
     "말티스": "maltese",
@@ -57,7 +50,6 @@ BREED_SYNONYMS = {
     "mix": "mix",
 }
 
-# 짧은 키(한 글자)도 포함: '황갈색' → 황(yellow)+갈(brown)
 COLOR_SYNONYMS = {
     "흰": "white",
     "하얀": "white",
@@ -109,7 +101,6 @@ STOPWORDS = {
     "있고", "있는", "있어요", "같음", "보임", "추정",
 }
 
-# 같은 뜻 단어를 하나로 (키워드 비교용)
 FEATURE_SYNONYMS = {
     "목줄": "목걸이",
     "인식표": "목걸이",
@@ -139,7 +130,6 @@ def norm_breed(raw: str) -> str:
 
 
 def color_set(raw: str) -> list[str]:
-    """색상 코드 목록 (문자열에 나온 순서)."""
     t = _clean(raw)
     found: list[tuple[int, str]] = []
     for k, v in COLOR_SYNONYMS.items():
@@ -156,7 +146,6 @@ def norm_color(raw: str) -> str:
 
 
 def parse_age_years(raw: str | None, today: date | None = None) -> float | None:
-    """'3살', '2~3년', '6개월', '2023(년생)', '2026(60일미만)(년생)' → 나이(년)."""
     if not raw:
         return None
     if "일미만" in raw or "일 미만" in raw:

@@ -3,16 +3,11 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/services.dart' show rootBundle;
 
-/// 이미지 기반 유사도 — 경량 방식 (색상 히스토그램 + dHash)
-///
-/// 서버(backend/app/ai/image_embedder.py 의 color-hist+dhash)와 같은 알고리즘입니다.
-/// 사진을 80x80 으로 줄이고 가운데 64x64 에서
-///  - 앞 64개: R,G,B 4단계 결합 히스토그램 (합 1)
-///  - 뒤 64개: 9x8 회색조 격자의 가로 밝기 차이 비트
+
 class ImageFeatures {
   static const method = 'color-hist+dhash';
 
-  /// RGBA 바이트(w*h*4) → 특징 128개
+
   static List<double> fromRgba(Uint8List rgba, int w, int h) {
     final ox = (w - 64) ~/ 2, oy = (h - 64) ~/ 2;
     final hist = List<double>.filled(64, 0);
@@ -40,7 +35,7 @@ class ImageFeatures {
     return out;
   }
 
-  /// 히스토그램 교집합 0.7 + dHash 0.3 (우연 수준 0.5 → 0)
+
   static double similarity(List<double> a, List<double> b) {
     var inter = 0.0;
     for (var i = 0; i < 64; i++) {
@@ -55,7 +50,7 @@ class ImageFeatures {
     return (0.7 * inter + 0.3 * dh).clamp(0.0, 1.0);
   }
 
-  /// 사진 바이트 → 특징 (디코딩 실패 시 null)
+
   static Future<List<double>?> fromBytes(Uint8List data) async {
     try {
       final codec = await ui.instantiateImageCodec(data, targetWidth: 80, targetHeight: 80);

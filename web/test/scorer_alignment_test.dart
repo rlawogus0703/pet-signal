@@ -8,8 +8,7 @@ import 'package:pet_signal_web/matching/scorer.dart';
 import 'package:pet_signal_web/models/lost_dog.dart';
 import 'package:pet_signal_web/models/notice.dart';
 
-/// 서버(backend)와 웹 점수 공식이 같은지 확인:
-/// backend 의 `python -m scripts.export_scoring_fixture` 가 만든 기준값과 비교합니다.
+
 void main() {
   final fx = jsonDecode(File('test/fixtures/scoring_cases.json').readAsStringSync()) as Map<String, dynamic>;
   final d = fx['dog'] as Map<String, dynamic>;
@@ -68,11 +67,11 @@ void main() {
       eq('semantic', noPhoto.textSemantic);
       eq('attribute', noPhoto.textAttribute);
       eq('text', noPhoto.text);
-      // 규칙 점수 100점 (순위 기준)
+
       expect(noPhoto.points, e['points'], reason: 'case $i points');
       expect([for (final it in noPhoto.items) it.points], e['point_items'], reason: 'case $i point_items');
       expect(noPhoto.total, closeTo((e['points'] as num) / 100, 1e-9));
-      // 예전 멀티모달 공식 (순위에는 안 씀)
+
       eq('final_no_photo', RuleScorer.finalScore(noPhoto.rule!, noPhoto.text, null));
       final img = (c['image'] as num?)?.toDouble();
       final withPhoto = RuleScorer().scoreOne(dog, notice, image: img, hasUserPhoto: true).score;

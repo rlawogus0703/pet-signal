@@ -4,7 +4,7 @@ import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 
-/// 사용자용 홈: 짧은 소개, 등록·공고 둘러보기, 3단계 이용 순서, 서비스 소개 안내
+
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -256,7 +256,7 @@ class _Footer extends StatelessWidget {
     return const Padding(
       padding: EdgeInsets.symmetric(vertical: 12),
       child: Text(
-        '펫 시그널은 “유사 후보”를 제안할 뿐 같은 개체로 단정하지 않습니다. 공고 원문과 사진은 보호자·보호소가 직접 확인해 주세요.\n© 2026 10조 · 한신대학교',
+        '펫 시그널은 “유사 후보”를 제안할 뿐 같은 개체로 단정하지 않습니다. 공고 원문과 사진은 보호자·보호소가 직접 확인해 주세요.',
         style: TextStyle(fontSize: 12, color: AppColors.subtext, height: 1.6),
         textAlign: TextAlign.center,
       ),

@@ -1,10 +1,3 @@
-"""서버 ↔ 웹 점수 일치 확인용 기준 사례.
-
-scripts/export_scoring_fixture.py 가 이 사례들의 서버 계산값을
-web/test/fixtures/scoring_cases.json 으로 내보내고, 웹 테스트(scorer_alignment_test.dart)가
-같은 값을 내는지 검사합니다. (AI 모델 없이 경량 방식 기준)
-"""
-
 from __future__ import annotations
 
 from datetime import date
@@ -44,7 +37,6 @@ IMAGE_VALUES = [0.8, None, 0.3, None, 0.55, None]
 
 
 def synthetic_pixels(seed: int) -> list[tuple[int, int, int]]:
-    """80x80 결정적 테스트 이미지 (웹 테스트도 같은 식으로 만듭니다)."""
     px = []
     for y in range(80):
         for x in range(80):
@@ -56,7 +48,7 @@ def synthetic_pixels(seed: int) -> list[tuple[int, int, int]]:
 
 
 def compute_cases() -> dict:
-    text_embedder._AVAILABLE = False  # 경량(char-ngram) 기준
+    text_embedder._AVAILABLE = False
     image_embedder.force_light_mode(True)
     out = []
     d = DOG

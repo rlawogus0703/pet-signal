@@ -5,7 +5,7 @@
     "display": "standalone",
     "background_color": "#FAF7F4",
     "theme_color": "#16233F",
-    "description": "실종견 유사 후보 매칭 서비스 (10조)",
+    "description": "실종견 유사 후보 매칭 서비스",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

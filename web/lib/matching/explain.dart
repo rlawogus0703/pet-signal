@@ -5,7 +5,7 @@ import '../models/lost_dog.dart';
 import '../models/score_breakdown.dart';
 import 'scorer.dart';
 
-/// 점수 막대 한 줄 (값 0~1)
+
 class ScoreItem {
   const ScoreItem(this.label, this.icon, this.value, this.weight, {this.ai = false, this.note});
   final String label;
@@ -13,10 +13,10 @@ class ScoreItem {
   final double? value;
   final double weight;
   final bool ai;
-  final String? note; // 값이 없을 때 이유 등
+  final String? note;
 }
 
-/// 규칙 점수 100점 항목 (품종 30 · 색상 25 · 지역 20 · 특징 15 · 날짜 10)
+
 List<RuleItem> ruleItemsOf(Candidate c) => c.score.items;
 
 IconData ruleIcon(String key) => switch (key) {
@@ -28,7 +28,7 @@ IconData ruleIcon(String key) => switch (key) {
       _ => Icons.check_rounded,
     };
 
-/// 목록 카드의 짧은 일치 표시 (받은 항목만)
+
 String ruleChipLabel(RuleItem it) => switch (it.key) {
       'breed' => '품종 일치',
       'color' => '색상 일치',
@@ -38,7 +38,7 @@ String ruleChipLabel(RuleItem it) => switch (it.key) {
       _ => it.label,
     };
 
-/// 참고용 직선 거리 (점수에는 쓰지 않음)
+
 double? distanceKm(LostDog d, Candidate c) {
   if (c.foundLat == null || c.foundLng == null) return null;
   return RuleScorer.haversineKm(d.lostLat, d.lostLng, c.foundLat!, c.foundLng!);

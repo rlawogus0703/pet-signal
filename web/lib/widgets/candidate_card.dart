@@ -10,7 +10,7 @@ import '../utils/format.dart';
 import 'common.dart';
 import 'score_bar.dart';
 
-/// 유사 후보 카드 (사진 + 규칙 점수 링 + 일치 칩 + 항목별 점수)
+
 class CandidateCard extends StatelessWidget {
   const CandidateCard({
     super.key,

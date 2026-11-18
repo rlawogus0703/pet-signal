@@ -1,4 +1,3 @@
-/// 실종견 등록 정보
 class LostDog {
   final String id;
   final String? photoUrl;

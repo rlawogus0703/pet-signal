@@ -1,12 +1,3 @@
-"""전국 시·군·구 중심 좌표 테이블 생성 (거리 점수용).
-
-원본: southkorea/southkorea-maps (KOSTAT 2013 시군구 경계, 단순화본)
-  https://raw.githubusercontent.com/southkorea/southkorea-maps/master/kostat/2013/json/skorea_municipalities_geo_simple.json
-출력:
-  backend/data/regions.json        (서버: 공고 주소 → 좌표)
-  web/lib/data/regions_data.dart   (웹: 등록 화면 지역 선택)
-실행: python tools/gen_regions.py [geojson 경로]
-"""
 import json
 import sys
 import urllib.request
@@ -22,7 +13,6 @@ SIDO = {
     "35": "전북특별자치도", "36": "전라남도", "37": "경상북도", "38": "경상남도",
     "39": "제주특별자치도",
 }
-# 2013 이후 명칭 변경
 RENAME = {("인천광역시", "남구"): "미추홀구"}
 
 
@@ -66,7 +56,6 @@ def main():
         name = f["properties"]["name"]
         sido = SIDO[code[:2]]
         lng, lat = geom_centroid(f["geometry"])
-        # '수원시장안구' → 시 + 구
         if "시" in name[:-1] and name.endswith("구") and code[:2] not in ("11", "21", "22", "23", "24", "25", "26"):
             idx = name.index("시") + 1
             city, gu = name[:idx], name[idx:]

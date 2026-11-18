@@ -6,7 +6,7 @@ import '../theme/app_theme.dart';
 import '../utils/format.dart';
 import '../widgets/common.dart';
 
-/// 로그인 없이 보는 공고 상세 (보호소 연락처·공고 기간)
+
 class NoticeDetailScreen extends StatelessWidget {
   const NoticeDetailScreen({super.key, required this.notice});
   final BrowseNotice notice;

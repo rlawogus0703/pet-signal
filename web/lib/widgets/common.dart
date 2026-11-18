@@ -6,7 +6,7 @@ import '../data/mock_data.dart';
 import '../matching/normalizer.dart';
 import '../theme/app_theme.dart';
 
-/// 품종별 기본 사진 (API 공고에 사진이 없을 때)
+
 const _breedFallback = <String, String>{
   'maltese': 'assets/dogs/maltese_white.jpg',
   'mix': 'assets/dogs/mix_cream.jpg',
@@ -29,7 +29,7 @@ String? resolveDogAsset({String? noticeId, String? breed}) {
   return null;
 }
 
-/// 강아지 사진: 업로드 바이트 → 번들 에셋 → 네트워크 → 플레이스홀더 순
+
 class DogPhoto extends StatelessWidget {
   const DogPhoto({
     super.key,
@@ -54,7 +54,7 @@ class DogPhoto extends StatelessWidget {
   final double radius;
   final double? aspectRatio;
   final Object? heroTag;
-  /// 목록처럼 작게 보여줄 때 디코드 메모리를 줄입니다. 상세 화면은 비워 두세요.
+
   final int? cacheWidth;
 
   @override
@@ -106,7 +106,7 @@ class _PhotoPlaceholder extends StatelessWidget {
   }
 }
 
-/// 웹 호버 시 살짝 떠오르는 카드
+
 class HoverCard extends StatefulWidget {
   const HoverCard({super.key, required this.child, this.onTap, this.padding, this.radius = 20, this.color});
   final Widget child;
@@ -152,7 +152,7 @@ class _HoverCardState extends State<HoverCard> {
   }
 }
 
-/// 원형 총점 링 (애니메이션)
+
 class ScoreRing extends StatelessWidget {
   const ScoreRing({super.key, required this.value, this.size = 64, this.stroke = 6, this.label});
   final double value;
@@ -198,7 +198,7 @@ class ScoreRing extends StatelessWidget {
   }
 }
 
-/// 작은 일치 칩
+
 class MatchChip extends StatelessWidget {
   const MatchChip({super.key, required this.label, this.icon, this.strong = false});
   final String label;
@@ -223,7 +223,7 @@ class MatchChip extends StatelessWidget {
   }
 }
 
-/// "유사 후보" 안내 배너
+
 class DisclaimerBanner extends StatelessWidget {
   const DisclaimerBanner({super.key, this.compact = false});
   final bool compact;
@@ -260,7 +260,7 @@ class DisclaimerBanner extends StatelessWidget {
   }
 }
 
-/// 섹션 제목
+
 class SectionTitle extends StatelessWidget {
   const SectionTitle(this.title, {super.key, this.subtitle, this.trailing, this.step});
   final String title;
@@ -301,7 +301,7 @@ class SectionTitle extends StatelessWidget {
   }
 }
 
-/// 반짝이는 로딩 스켈레톤
+
 class Skeleton extends StatefulWidget {
   const Skeleton({super.key, this.width, this.height = 14, this.radius = 8});
   final double? width;
@@ -345,7 +345,7 @@ class _SkeletonState extends State<Skeleton> with SingleTickerProviderStateMixin
   }
 }
 
-/// 빈 화면 / 오류 화면
+
 class StateView extends StatelessWidget {
   const StateView({
     super.key,
@@ -396,7 +396,7 @@ class StateView extends StatelessWidget {
   }
 }
 
-/// 페이지 최대 폭 + 여백
+
 class PageBody extends StatelessWidget {
   const PageBody({super.key, required this.children, this.maxWidth = 1180, this.padding});
   final List<Widget> children;
@@ -419,7 +419,7 @@ class PageBody extends StatelessWidget {
   }
 }
 
-/// 브랜드 로고
+
 class BrandLogo extends StatelessWidget {
   const BrandLogo({super.key, this.light = false, this.size = 34});
   final bool light;

@@ -1,4 +1,4 @@
-# 시연용 강아지 사진 출처 (Wikimedia Commons, 600x600으로 잘라 사용)
+# 예시 공고에 쓴 강아지 사진 출처 (Wikimedia Commons, 600x600으로 잘라 사용)
 my_maltese.jpg — File:Maltese puppy portrait.jpg (CC BY-SA 2.0) https://commons.wikimedia.org/wiki/File:Maltese_puppy_portrait.jpg
 mix_apricot.jpg — File:Maltipoo (95574).jpg (CC BY-SA 4.0) https://commons.wikimedia.org/wiki/File:Maltipoo_(95574).jpg
 mix_cream.jpg — File:Mixed-breed dog white sleeping.jpg (CC BY-SA 2.0) https://commons.wikimedia.org/wiki/File:Mixed-breed_dog_white_sleeping.jpg

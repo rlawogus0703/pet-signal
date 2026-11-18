@@ -6,7 +6,6 @@ from datetime import date
 
 @dataclass
 class NoticeRecord:
-    """출처와 상관없이 수집기가 DB 에 넣는 공통 형태."""
 
     notice_id: str
     source: str
@@ -38,7 +37,6 @@ class NoticeRecord:
 
 
 class NoticeSource:
-    """공고 출처 인터페이스."""
 
     name: str = "base"
 
@@ -46,5 +44,4 @@ class NoticeSource:
         return True
 
     def fetch(self, *, pages: int, rows: int) -> tuple[list[NoticeRecord], dict]:
-        """(공고 목록, 메타정보{total_count, pages ...})"""
         raise NotImplementedError

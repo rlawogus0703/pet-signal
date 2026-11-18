@@ -3,7 +3,7 @@ import 'package:uuid/uuid.dart';
 import '../models/user.dart';
 import 'auth_repository.dart';
 
-/// Mock 모드: 메모리에 회원 저장 (백엔드 없이 로컬에서 가입·로그인)
+
 class MockAuthRepository implements AuthRepository {
   final _uuid = const Uuid();
   final Map<String, _Stored> _usersByEmail = {};

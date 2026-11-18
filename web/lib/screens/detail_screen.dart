@@ -90,7 +90,7 @@ class _DetailScreenState extends State<DetailScreen> {
     );
   }
 
-  /// 내 사진 ↔ 보호소 공고 사진 나란히 (사진 유사도는 계산하지 않아요)
+
   Widget _photoPair(Candidate c, bool wide) {
     final d = widget.myDog;
     Widget labeled(Widget photo, String label) => Stack(children: [
@@ -226,7 +226,7 @@ class _DetailScreenState extends State<DetailScreen> {
         .join(' · ');
   }
 
-  /// 규칙 점수 100점 (김민재 앱 상세 화면과 같은 구성)
+
   Widget _scores(Candidate c) {
     final s = c.score;
     final items = ruleItemsOf(c);

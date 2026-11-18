@@ -1,11 +1,3 @@
-"""실종견 등록 시 매칭 결과·알림 생성.
-
-순위 = 규칙 점수 100점 (김민재 앱과 같은 기준, app/services/rule_points.py)
-  품종 30 · 색상 25 · 지역(시군구 표기) 20 · 특징(공통 단어) 15 · 날짜(실종일 이후 접수) 10
-같은 점수면 최근에 구조 접수된 공고가 먼저 옵니다.
-텍스트·사진 유사도는 순위에 쓰지 않습니다 (사진 임베딩은 즉석으로 받지 않음).
-"""
-
 from __future__ import annotations
 
 import json
@@ -36,7 +28,6 @@ def ensure_dog_embeddings(dog: LostDogRow) -> None:
 
 
 def _score(dog: LostDogRow, n: NoticeRow, dog_text, dog_region: str | None) -> MatchScore:
-    """규칙 점수 100점 계산 (사진 유사도는 계산하지 않음)."""
     return score_pair(
         dog_breed=dog.breed,
         dog_color=dog.color,
@@ -82,11 +73,6 @@ def detail_of(ms: MatchScore) -> dict:
 
 
 def matchable_notices(db: Session, *, light: bool = False) -> list[NoticeRow]:
-    """실제 공공 API 공고가 있으면 그것만, 없으면 예시(시드) 공고로 매칭 (샘플 데이터 모드).
-
-    원본 JSON(raw_json)은 매칭·둘러보기에 안 써서 불러오지 않습니다 (메모리 절약).
-    light=True(둘러보기)면 임베딩 JSON 도 빼고 불러옵니다.
-    """
     heavy = [NoticeRow.raw_json]
     if light:
         heavy += [NoticeRow.text_embedding_json, NoticeRow.image_embedding_json]
@@ -116,15 +102,12 @@ def rematch_lost_dog(db: Session, lost_dog_id: str) -> list[MatchResultRow]:
     dog_text = loads_emb(dog.text_embedding_json)
     dog_region = region_key(dog.lost_address)
 
-    # 모든 공고를 규칙 점수 100점으로 계산 → 점수 높은 순, 같으면 최근 접수 순
-    # notice_id 를 미리 꺼내 둡니다 (커밋 뒤 객체 만료로 건마다 DB 를 다시 읽는 일 방지).
     scored = [(n.notice_id, n, _score(dog, n, dog_text, dog_region)) for n in notices]
     scored.sort(
         key=lambda x: (x[2].points.total, (x[1].found_date or x[1].notice_start or date.min).toordinal()),
         reverse=True,
     )
 
-    # 공고가 수천 건이라 점수 상위 N개만 저장 (화면은 최대 100개까지 보여줌)
     scored = scored[: max(1, get_settings().match_store_top)]
 
     results: list[MatchResultRow] = []
@@ -133,7 +116,6 @@ def rematch_lost_dog(db: Session, lost_dog_id: str) -> list[MatchResultRow]:
         row = MatchResultRow(
             lost_dog_id=lost_dog_id,
             notice_id=nid,
-            # 항목별 값은 0~1 (받은 점수 / 만점). distance 칸에는 지역(시군구) 점수를 넣습니다.
             score_breed=pts.fraction("breed"),
             score_color=pts.fraction("color"),
             score_distance=pts.fraction("region"),

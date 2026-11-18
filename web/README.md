@@ -1,17 +1,11 @@
-# pet_signal_web
+# 펫 시그널 웹 (Flutter)
 
-A new Flutter project.
+Flutter Web 클라이언트입니다. 실행 방법, 배포, API 연동은 저장소 루트의 [README.md](../README.md)를 보면 됩니다.
 
-## Getting Started
+```bat
+cd web
+flutter pub get
+flutter run -d chrome
+```
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+기본은 Mock 모드(예시 공고 16건)이고, 상단 버튼에서 API 서버 주소로 바꿀 수 있습니다.

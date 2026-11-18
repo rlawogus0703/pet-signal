@@ -2,16 +2,11 @@ import 'dart:math';
 
 import 'normalizer.dart';
 
-/// 텍스트 기반 유사도 (교수님 피드백: 텍스트 알고리즘 갈래)
-///
-/// 서버(backend/app/ai/text_similarity.py)와 같은 규칙입니다.
-///  1) keyword   단어(키워드) 알고리즘  : 특징 키워드 겹침 (Dice, 동의어·접두 일치)
-///  2) semantic  문장 의미 유사도       : 웹은 글자 2-gram 코사인 (서버는 AI 문장 임베딩 가능)
-///  3) attribute 문장 속성·성향 분석    : 크기·목걸이·옷·귀·꼬리·털·성향(온순/경계) 비교
+
 class TextSimilarity {
   static const weights = <String, double>{'keyword': 0.4, 'semantic': 0.4, 'attribute': 0.2};
 
-  // ── 1) 키워드 ──
+
   static bool _tokenMatch(String a, String b) {
     if (a == b) return true;
     final (s, l) = a.length <= b.length ? (a, b) : (b, a);
@@ -48,7 +43,7 @@ class TextSimilarity {
     return 2.0 * m / (ta.length + tb.length);
   }
 
-  // ── 2) 문장 의미 (글자 2-gram) ──
+
   static Map<String, int> _bigrams(String text) {
     final v = <String, int>{};
     for (final tok in Normalizer.featureTokens(text)) {
@@ -70,7 +65,7 @@ class TextSimilarity {
     return (dot / (na * nb)).clamp(0.0, 1.0);
   }
 
-  // ── 3) 문장 속성·성향 ──
+
   static const _rules = <(String, String, List<String>)>[
     ('size', 'small', ['초소형', '소형', '작은', '작음']),
     ('size', 'medium', ['중형']),
@@ -120,7 +115,7 @@ class TextSimilarity {
     return out;
   }
 
-  /// (점수 또는 null, 일치한 속성 이름)
+
   static (double?, List<String>) attributeScore(String a, String b, {String? weightB}) {
     final aa = extractAttributes(a);
     final bb = extractAttributes(b, weight: weightB);

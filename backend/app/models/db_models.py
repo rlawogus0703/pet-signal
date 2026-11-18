@@ -7,7 +7,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
 
 
-
 class UserRow(Base):
     __tablename__ = "users"
 
@@ -57,13 +56,11 @@ class NoticeRow(Base):
     shelter_name: Mapped[str] = mapped_column(String(128), default="")
     shelter_phone: Mapped[str] = mapped_column(String(64), default="")
     notice_url: Mapped[str] = mapped_column(String(512), default="")
-    # 정규화·텍스트/이미지 특징 분리
     breed_norm: Mapped[str | None] = mapped_column(String(64), nullable=True)
     color_norm: Mapped[str | None] = mapped_column(String(64), nullable=True)
     text_embedding_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     image_embedding_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     raw_json: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # 공공 API 상세 필드 (v2)
     source: Mapped[str] = mapped_column(String(32), default="seed")
     photo_url2: Mapped[str | None] = mapped_column(String(512), nullable=True)
     photo_local: Mapped[str | None] = mapped_column(String(512), nullable=True)

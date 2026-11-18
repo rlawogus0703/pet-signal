@@ -10,7 +10,7 @@ import '../models/lost_dog.dart';
 import 'api_auth_repository.dart';
 import 'repository.dart';
 
-/// API_SPEC.md 에 맞춘 HTTP 클라이언트 (백엔드 연동)
+
 class ApiRepository implements PetSignalRepository {
   ApiRepository({
     required this.baseUrl,

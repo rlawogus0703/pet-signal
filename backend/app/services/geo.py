@@ -1,8 +1,3 @@
-"""주소 → 대략 좌표 (시·군·구 중심점). 공공 API 공고에는 좌표가 없어 거리 점수에 씁니다.
-
-data/regions.json 은 tools/gen_regions.py 로 만든 전국 시·군·구 중심 좌표입니다.
-"""
-
 from __future__ import annotations
 
 import json
@@ -56,7 +51,6 @@ def _sido_of(token: str) -> str | None:
 
 @lru_cache(maxsize=4096)
 def geocode(address: str | None) -> tuple[float, float, str] | None:
-    """'경기도 성남시 분당구 불정로 266' → (위도, 경도, '경기도 성남시 분당구')."""
     if not address:
         return None
     toks = [t for t in re.split(r"[\s,()]+", address.strip()) if t]
@@ -67,7 +61,6 @@ def geocode(address: str | None) -> tuple[float, float, str] | None:
     rows = [r for r in _regions() if (sido is None or r["sido"] == sido)]
     if not rows:
         return None
-    # 시·군·구 + 구
     for i, t in enumerate(rest[:3]):
         cands = [r for r in rows if r["sigungu"] == t]
         if not cands:
@@ -88,7 +81,6 @@ def geocode(address: str | None) -> tuple[float, float, str] | None:
 
 
 def geocode_first(*addresses: str | None) -> tuple[float, float, str] | None:
-    """여러 주소 후보 중 가장 자세히 찾아지는 것 (구 > 시군구 > 시도)."""
     best = None
     for a in addresses:
         g = geocode(a)

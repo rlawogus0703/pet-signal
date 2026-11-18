@@ -1,19 +1,3 @@
-"""가상 '보호자 실종 신고' 만들기 (정답이 있는 시험 문제).
-
-실제 같은 개 쌍(실종 신고 ↔ 보호소 공고) 데이터가 없어서, 실제 보호소 공고 하나를 정답으로 정하고
-그 개를 잃어버린 보호자가 썼을 법한 신고서를 규칙에 따라 변형해 만듭니다.
-고정 시드라 몇 번을 돌려도 같은 문제가 나옵니다.
-
-난이도
-  easy   : 공고와 거의 같은 표기 (사이트 목록에서 고른 것처럼), 0.5~1.5km · 1~2일, 특징 대부분 유지, 원본 사진 약간 변형
-  medium : 동의어·'믹스' 표기, 이웃 색 일부, 1~3km · 1~4일, 특징 절반 + 말 바꿈, 다른 사진(popfile2)/중간 변형, 20% 사진 없음
-  hard   : 보호자가 믿는 품종(백구·진돗개·말티즈 …)·'모름'·오타, 이웃 색 위주, 2~5km · 3~7일,
-           특징 거의 없음 + 보호자 말투, 다른 사진+강한 변형, 40% 사진 없음
-
-매처(normalizer.py)가 아는 동의어만 쓰면 점수가 부풀려지므로, 매처 사전에 없는 표기
-(예: 몰티즈, 포메리안, 백구, 황구, 시고르자브종, 살구색, 은색, 누런색)도 일부러 섞었습니다.
-"""
-
 from __future__ import annotations
 
 import io
@@ -29,8 +13,6 @@ from app.services.normalizer import color_set, norm_breed, parse_age_years, pars
 SEED = 20261115
 LEVELS = ("easy", "medium", "hard")
 
-# ── 품종 표기 ──────────────────────────────────────────────
-# 같은 품종의 다른 표기 (매처가 아는 것 + 모르는 것)
 BREED_VARIANTS = {
     "mix": ["믹스", "잡종", "믹스견", "혼종"],
     "poodle": ["토이푸들", "푸들", "푸우들*"],
@@ -50,7 +32,6 @@ BREED_VARIANTS = {
     "shih_tzu": ["시츄", "시추"],
     "french_bulldog": ["프렌치불독", "프불*"],
 }
-# 믹스견을 보호자가 '이 품종'이라고 믿고 쓰는 경우 (색·크기로 고름)
 BELIEVED = {
     ("white", "small"): ["말티즈", "말티즈 믹스", "비숑"],
     ("white", "large"): ["진돗개", "백구*", "진도믹스"],
@@ -65,7 +46,6 @@ BELIEVED = {
 }
 UNKNOWN_BREED = ["모름", "시고르자브종*", "똥개*"]
 
-# ── 색 표기 ────────────────────────────────────────────────
 COLOR_WORDS = {
     "white": ["흰색", "하얀색", "화이트", "백색"],
     "cream": ["크림색", "아이보리", "베이지", "살구색*"],
@@ -87,7 +67,6 @@ COLOR_NEIGHBOR = {
     "spotted": ["white"],
 }
 
-# ── 특징 말 바꾸기 ─────────────────────────────────────────
 PARAPHRASE = [
     ("목줄", "목걸이"), ("인식표", "목걸이"), ("미착용", "안 하고 있음"), ("착용", "하고 있음"),
     ("온순함", "착해요"), ("온순", "순해요"), ("순함", "순한 편"), ("사람을 좋아함", "사람 잘 따라요"),
@@ -117,7 +96,7 @@ class Query:
     region: tuple[str, str]
     shift_km: float
     day_gap: int
-    photo_kind: str  # none | photo1_mild | photo1_moderate | photo1_heavy | photo2 | photo2_heavy
+    photo_kind: str
     photo_url: str | None
     tags: list[str] = field(default_factory=list)
 
@@ -137,9 +116,6 @@ def nearest_region(lat: float, lng: float) -> tuple[str, str]:
 
 
 def owner_region(n: dict, lat: float, lng: float) -> tuple[str, str]:
-    """보호자가 고를 시·군·구. 옮긴 지점이 공고 지점과 같은 구역이면 공고 관할 그대로,
-    다른 시·군·구 중심에 더 가까워졌으면(경계를 넘었으면) 그쪽으로 바꿉니다.
-    (2026년 새로 생긴 구처럼 좌표 사전에 없는 관할도 기존 검색에 불리하지 않게)"""
     here = nearest_region(lat, lng)
     if here == nearest_region(n["found_lat"], n["found_lng"]):
         return notice_region(n) if notice_region(n)[0] else here
@@ -195,7 +171,6 @@ def owner_breed(n: dict, level: str, rng: random.Random, tags: list[str]) -> str
             return _pick(rng, believed)
         tags.append("breed:mix")
         return "믹스"
-    # hard
     if u < 0.3:
         tags.append("breed:unknown")
         return _pick(rng, UNKNOWN_BREED)
@@ -268,7 +243,6 @@ def owner_features(n: dict, level: str, rng: random.Random) -> str:
                     p = p.replace(a, b)
             out.append(p)
         kept = out
-    # 보호자는 크기·목걸이 정도는 압니다
     kg = parse_weight_kg(n.get("weight"))
     if kg is not None and rng.random() < {"easy": 0.5, "medium": 0.5, "hard": 0.4}[level]:
         kept.append("작은 편" if kg <= 7 else ("중간 크기" if kg <= 18 else "덩치 큼"))
@@ -293,7 +267,6 @@ def choose_photo(n: dict, level: str, rng: random.Random) -> tuple[str, str | No
 
 
 def degrade(data: bytes, kind: str, rng: random.Random) -> bytes | None:
-    """보호자 사진 흉내: 자르기·밝기/색 변화·회전·뒤집기·JPEG 재압축."""
     from PIL import Image, ImageEnhance, ImageOps
 
     try:

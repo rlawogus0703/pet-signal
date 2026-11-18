@@ -35,7 +35,7 @@ void main() {
     for (var i = 1; i < ranked.length; i++) {
       expect(ranked[i - 1].score.points!, greaterThanOrEqualTo(ranked[i].score.points!));
     }
-    // 흰색 말티즈 + 오산시 공고는 품종·색상·지역을 모두 받음
+
     final top = ranked.first;
     expect(top.score.item('breed')!.points, 30);
     expect(top.score.item('color')!.points, 25);
@@ -50,7 +50,7 @@ void main() {
   });
 
   test('시군구 표기 비교', () {
-    expect(RulePoints.regionKey('경기도 오산시 양산동 (한신대학교 인근)'), '경기 오산시');
+    expect(RulePoints.regionKey('경기도 오산시 양산동'), '경기 오산시');
     expect(RulePoints.regionKey('서울특별시 강남구'), '서울 강남구');
     expect(RulePoints.regionKey('경기도 수원시 권선구 세류동'), '경기 수원시');
     expect(RulePoints.regionKey('상적동 96-7'), isNull);

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// 펫 시그널 디자인 시스템 (코랄 + 딥 네이비)
+
 class AppColors {
   static const coral = Color(0xFFFF6B4A);
   static const coralDark = Color(0xFFE5532F);
@@ -16,7 +16,7 @@ class AppColors {
   static const warning = Color(0xFFF59E0B);
   static const info = Color(0xFF3B82F6);
 
-  /// 점수 구간별 색
+
   static Color score(double v) {
     if (v >= 0.75) return coral;
     if (v >= 0.55) return const Color(0xFFF59E0B);

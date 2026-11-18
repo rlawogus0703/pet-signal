@@ -1,5 +1,3 @@
-"""펫 시그널 FastAPI 서버."""
-
 from __future__ import annotations
 
 import logging
@@ -20,7 +18,6 @@ from app.services.seed import seed_if_needed
 
 make_console_safe()
 logging.basicConfig(level=logging.INFO)
-# httpx 는 요청 URL(인증키 포함)을 INFO 로 찍으므로 숨깁니다
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 log = logging.getLogger("petsignal")
@@ -29,7 +26,7 @@ settings = get_settings()
 app = FastAPI(
     title="Pet Signal API",
     version="0.2.0",
-    description="10조 펫 시그널 — 텍스트·이미지·규칙 멀티모달 유사 후보 매칭",
+    description="실종견과 보호소 공고를 유사 후보로 매칭합니다.",
 )
 
 origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]

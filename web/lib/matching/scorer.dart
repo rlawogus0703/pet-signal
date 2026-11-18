@@ -8,20 +8,7 @@ import 'normalizer.dart';
 import 'rule_points.dart';
 import 'text_similarity.dart';
 
-/// 매칭 스코어러 (웹 오프라인 데모용)
-///
-/// 순위 = 규칙 점수 100점 (김민재 앱 · 서버와 같은 기준, rule_points.dart):
-///   품종 30 · 색상 25 · 지역 20 · 특징 15 · 날짜 10. 같은 점수면 최근 접수 순.
-///   score.total = points / 100.
-///
-/// 아래 멀티모달 공식은 성능평가·서버 일치 테스트용으로 남겨 두었고 순위에는 쓰지 않습니다.
-/// (서버 backend/app/services/matcher.py + app/ai/fusion.py 와 같은 공식·가중치)
-///   rule  = 품종 0.25 · 색상 0.25 · 거리 0.25 · 날짜 0.15 · 나이 0.10
-///   text  = 키워드 0.4 · 문장 의미 0.4 · 속성/성향 0.2
-///   image = 사진 특징 유사도 (색상 히스토그램 + dHash)
-///   final = rule 0.45 + text 0.25 + image 0.30
-/// 사용자 사진이 없으면 image 는 빼고 다시 나누고, 공고 사진만 없으면 중립값 0.40 을 넣습니다.
-/// (backend/tests 의 기준값 web/test/fixtures/scoring_cases.json 으로 서버와 일치 여부를 테스트합니다)
+
 class RuleScorer {
   static const ruleWeights = <String, double>{
     'breed': 0.25,
@@ -33,14 +20,14 @@ class RuleScorer {
   static const modalWeights = <String, double>{'rule': 0.45, 'text': 0.25, 'image': 0.30};
   static const missingImageNeutral = 0.40;
 
-  /// 예전 화면 호환용: 항목별 가중치를 한 표로
+
   static final weights = <String, double>{
     for (final e in ruleWeights.entries) e.key: e.value * modalWeights['rule']!,
     'text': modalWeights['text']!,
     'image': modalWeights['image']!,
   };
 
-  /// [imageScores]: 공고 ID → 사진 유사도 (사용자 사진이 있을 때만, 공고 사진 없으면 null)
+
   List<Candidate> rank(LostDog dog, List<Notice> notices,
       {Map<String, double?>? imageScores, bool hasUserPhoto = false}) {
     final scored = [
@@ -160,7 +147,7 @@ class RuleScorer {
     return 0.0;
   }
 
-  /// 색상 집합 비교: 같음 1.0 · 일부 공유 0.9 · 이웃 색 0.85 · 다름 0
+
   static double colorScore(String a, String b) {
     final ca = Normalizer.colorSet(a), cb = Normalizer.colorSet(b);
     if (ca.isEmpty || cb.isEmpty) {
@@ -196,7 +183,7 @@ class RuleScorer {
     return 0.05;
   }
 
-  /// dayDiff = 발견일 - 실종일. 실종 2일 이상 전에 발견된 공고는 낮게.
+
   static double signedDateScore(int dayDiff) => dayDiff < -1 ? 0.1 : dateScore(dayDiff.abs());
 
   static double ageScore(String? a, String? b) {
@@ -210,7 +197,7 @@ class RuleScorer {
     return 0.15;
   }
 
-  /// 서버와 같은 하버사인 공식
+
   static double haversineKm(double lat1, double lon1, double lat2, double lon2) {
     const r = 6371.0;
     const p = pi / 180.0;

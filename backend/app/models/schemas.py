@@ -5,7 +5,6 @@ from pydantic import BaseModel, Field
 
 class LostDogCreate(BaseModel):
     photo_url: str | None = None
-    # 업로드 사진 (base64 또는 data:image/...;base64,...) — 이미지 유사도 계산에 사용
     photo_data: str | None = None
     breed: str
     color: str
@@ -36,41 +35,35 @@ class LostDogOut(BaseModel):
 
 
 class RuleItemOut(BaseModel):
-    key: str  # breed | color | region | features | date
-    label: str  # 품종 | 색상 | 지역 | 특징 | 날짜
+    key: str
+    label: str
     points: int
     max: int
     reason: str
 
 
 class ScoreBreakdown(BaseModel):
-    # ── 규칙 점수 100점 (순위 기준, 김민재 앱과 같은 기준) ──
-    points: int | None = None  # 예: 65
+    points: int | None = None
     max_points: int = 100
-    items: list[RuleItemOut] = Field(default_factory=list)  # 품종 30 · 색상 25 · 지역 20 · 특징 15 · 날짜 10
+    items: list[RuleItemOut] = Field(default_factory=list)
     caption: str | None = None
     note: str | None = None
-    # ── 아래는 예전 필드 (0~1). total = points / 100 ──
-    # 규칙 기반 항목
     breed: float = 0
     color: float = 0
     distance: float = 0
     date: float = 0
-    features: float = 0  # = text_keyword (예전 필드 호환)
+    features: float = 0
     age: float = 0
-    # 세 갈래 + 최종
-    rule: float | None = None  # 규칙 점수 (품종·색상·거리·날짜·나이)
-    text: float | None = None  # 텍스트 점수 (키워드 + 문장 의미 + 속성/성향)
-    image: float | None = None  # 이미지 점수 (사진 임베딩), 사진이 없으면 null
-    total: float = 0  # 멀티모달 최종 점수
-    # 텍스트 세부
+    rule: float | None = None
+    text: float | None = None
+    image: float | None = None
+    total: float = 0
     text_keyword: float | None = None
     text_semantic: float | None = None
     text_attribute: float | None = None
-    text_method: str | None = None  # sentence-transformers | char-ngram
-    # 이미지 세부
-    image_method: str | None = None  # clip | color-hist+dhash
-    image_status: str | None = None  # ok | no_user_photo | no_notice_photo | fetch_failed
+    text_method: str | None = None
+    image_method: str | None = None
+    image_status: str | None = None
 
 
 class CandidateOut(BaseModel):
@@ -91,15 +84,13 @@ class CandidateOut(BaseModel):
     score: ScoreBreakdown
     reasons: list[str] = Field(default_factory=list)
     rank: int = 0
-    # 멀티모달 요약 (score 안의 값과 같음)
     rule_score: float | None = None
     text_score: float | None = None
     image_score: float | None = None
     final_score: float = 0
-    # 공고 상세 (공공 API)
     source: str = "seed"
     photo_url2: str | None = None
-    photo_proxy_url: str | None = None  # 웹에서 CORS 없이 보는 서버 경유 사진 주소
+    photo_proxy_url: str | None = None
     photo2_proxy_url: str | None = None
     kind_full: str = ""
     sex: str = ""
@@ -141,7 +132,6 @@ class NotificationListOut(BaseModel):
     items: list[NotificationOut]
 
 
-
 class SignupRequest(BaseModel):
     email: str
     password: str
@@ -166,7 +156,6 @@ class AuthTokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserOut
-
 
 
 class NearbyNoticeOut(BaseModel):

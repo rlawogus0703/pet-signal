@@ -1,14 +1,3 @@
-"""텍스트 기반 유사도 (교수님 피드백: 텍스트 알고리즘 갈래).
-
-세 부분으로 나눠 계산하고 가중 평균해 text_score 를 만듭니다.
-  1) keyword   단어(키워드) 알고리즘   : 특징 문구 키워드 겹침 (Dice, 동의어·접두 일치 허용)
-  2) semantic  문장 의미 유사도        : sentence-transformers 문장 임베딩 코사인
-                                          (모델이 없으면 글자 2-gram 코사인으로 대체)
-  3) attribute 문장 속성·성향 분석     : 문장에서 크기·목걸이·옷·귀·꼬리·털·성향(온순/경계)을 뽑아 비교
-
-웹(web/lib/matching/text_similarity.dart)과 같은 규칙입니다 (semantic 의 AI 모델 부분만 서버 전용).
-"""
-
 from __future__ import annotations
 
 import math
@@ -21,7 +10,6 @@ from app.services.normalizer import feature_tokens, parse_weight_kg
 TEXT_WEIGHTS = {"keyword": 0.4, "semantic": 0.4, "attribute": 0.2}
 
 
-# ── 1) 키워드 ──────────────────────────────────────────────
 def _token_match(a: str, b: str) -> bool:
     if a == b:
         return True
@@ -52,7 +40,6 @@ def keyword_score(a: str, b: str) -> float:
     return 2.0 * m / (len(ta) + len(tb))
 
 
-# ── 2) 문장 의미 ───────────────────────────────────────────
 def _bigrams(text: str) -> dict[str, int]:
     vec: dict[str, int] = {}
     for tok in feature_tokens(text):
@@ -82,21 +69,18 @@ def semantic_score(
     emb_a: list[float] | None = None,
     emb_b: list[float] | None = None,
 ) -> tuple[float, str]:
-    """문장 의미 유사도 (값, 방식)."""
     if text_embedder.ai_available():
         try:
             ea = emb_a if emb_a and len(emb_a) > 64 else text_embedder.embed_text(a)
             eb = emb_b if emb_b and len(emb_b) > 64 else text_embedder.embed_text(b)
             if len(ea) > 64 and len(eb) > 64:
                 c = text_embedder.cosine(ea, eb)
-                # 다국어 MiniLM: 무관한 문장도 0.2~0.3 이 나와서 0.2~1.0 → 0~1 로 펴 줍니다
                 return max(0.0, min(1.0, (c - 0.2) / 0.8)), "sentence-transformers"
         except Exception:
             pass
     return char_ngram_similarity(a, b), "char-ngram"
 
 
-# ── 3) 문장 속성·성향 분석 ─────────────────────────────────
 ATTRIBUTE_RULES: list[tuple[str, str, list[str]]] = [
     ("size", "small", ["초소형", "소형", "작은", "작음"]),
     ("size", "medium", ["중형"]),
@@ -152,7 +136,6 @@ def extract_attributes(text: str, weight: str | None = None) -> dict[str, str]:
 def attribute_score(
     a: str, b: str, weight_b: str | None = None
 ) -> tuple[float | None, list[str]]:
-    """(점수 또는 None, 일치한 속성 이름 목록)."""
     aa = extract_attributes(a)
     bb = extract_attributes(b, weight_b)
     common = [c for c in aa if c in bb]
@@ -162,7 +145,6 @@ def attribute_score(
     return len(matched) / len(common), [ATTRIBUTE_LABELS[c] for c in matched]
 
 
-# ── 합치기 ────────────────────────────────────────────────
 @dataclass
 class TextResult:
     keyword: float

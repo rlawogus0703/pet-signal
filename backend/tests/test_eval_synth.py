@@ -1,5 +1,3 @@
-"""성능평가용 가상 신고 생성기: 같은 시드면 같은 문제, 정답 공고와 앞뒤가 맞는지."""
-
 from datetime import date
 
 from eval.synth import build_queries, owner_region

@@ -1,10 +1,3 @@
-"""평가용 사진 특징 캐시 (경량 color-hist+dhash, 서비스 Render 와 같은 방식).
-
-- 후보 공고: 서비스와 같은 순서(popfile1 → popfile2)로 받은 사진의 128차원 특징을
-  eval/cache/notice_light_feats.json 에 저장합니다 (다시 받지 않음, git 에는 올리지 않음).
-- 질의(가상 보호자) 사진: 원본 바이트를 eval/cache/img/ 에 저장해 두고 변형해서 씁니다.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -51,7 +44,6 @@ def load_feats() -> dict[str, list[float] | None]:
 
 
 def build_notice_feats(notices: list[dict], keep_bytes_for: set[str] | None = None, workers: int = 16) -> dict:
-    """후보 공고 사진 특징 계산 (이미 있는 것은 건너뜀). 실패하면 None."""
     feats = load_feats()
     keep_bytes_for = keep_bytes_for or set()
     todo = [n for n in notices if n["notice_id"] not in feats]

@@ -1,5 +1,3 @@
-"""예시 공고 시드 스크립트: python -m scripts.seed_data"""
-
 from app.console import make_console_safe
 from app.database import SessionLocal, init_db
 from app.services.seed import seed_notices

@@ -44,7 +44,6 @@ def get_optional_user(
 
 
 def require_admin_key(x_admin_key: str | None = Header(default=None, alias="X-Admin-Key")) -> None:
-    """관리자 라우트는 X-Admin-Key 가 설정된 ADMIN_API_KEY 와 같아야 합니다. 키가 없으면 거부합니다."""
     from app.config import get_settings
 
     expected = (get_settings().admin_api_key or "").strip()

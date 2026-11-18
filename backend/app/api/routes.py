@@ -145,9 +145,7 @@ def _image_type(data: bytes) -> str:
     return "application/octet-stream"
 
 
-
 def _thumb_side(size: str | None, w: int | None) -> int | None:
-    """size=thumb 또는 w=픽셀(64-800). 없으면 원본."""
     if w is not None:
         return max(64, min(800, w))
     if size and size.strip().lower() == "thumb":
@@ -234,7 +232,6 @@ def list_candidates(
         .limit(limit)
     )
     matches = db.scalars(q).all()
-    # 매칭 결과가 없거나 예전 방식(규칙 점수 100점 이전)으로 저장돼 있으면 다시 계산
     if not matches or not _has_rule_points(matches[0]):
         rematch_lost_dog(db, lost_dog_id)
         matches = db.scalars(q).all()
@@ -275,7 +272,6 @@ def candidate_detail(lost_dog_id: str, notice_id: str, db: Session = Depends(get
     notice = db.get(NoticeRow, notice_id)
     if not notice:
         raise HTTPException(404, "notice not found")
-    # rank 계산 (목록과 같은 순서: 점수 높은 순, 같으면 저장 순서)
     better = db.scalar(
         select(func.count()).where(
             MatchResultRow.lost_dog_id == lost_dog_id,
@@ -350,7 +346,6 @@ def admin_collect(
         release_collect_lock()
 
 
-
 def _notice_public(notice: NoticeRow, dist_km: float | None = None) -> NearbyNoticeOut:
     has_photo = bool(notice.photo_url or notice.photo_url2 or notice.photo_local)
     nid = notice.notice_id
@@ -386,8 +381,6 @@ def _notice_public(notice: NoticeRow, dist_km: float | None = None) -> NearbyNot
     )
 
 
-# ── 가까운 보호소 공고 (로그인 없이) ────────────────────────
-
 @router.get("/notices/nearby", response_model=NearbyNoticeListOut)
 def notices_nearby(
     lat: float | None = Query(None),
@@ -402,7 +395,6 @@ def notices_nearby(
     db: Session = Depends(get_db),
 ):
     """로그인 없이 주변 보호소 공고를 거리순으로 봅니다."""
-    # 좌표는 둘 다 있어야 씁니다
     if (lat is None) != (lng is None):
         lat, lng = None, None
     data = list_nearby(
@@ -468,7 +460,6 @@ def lost_dog_photo(
     return _photo_response(data, _thumb_side(size, w))
 
 
-# ── 시스템 구성 정보 (발표·디버그용) ─────────────────────────────
 @router.get("/system")
 def system_info(db: Session = Depends(get_db)):
     st = get_settings()
@@ -508,7 +499,7 @@ def system_info(db: Session = Depends(get_db)):
                 "semantic_method": text_similarity.semantic_method(),
             },
             "image_branch": {"method": image_embedder.current_method(), "used_for_ranking": False},
-            "ranking": "규칙 점수 100점 (김민재 앱과 같은 기준)",
+            "ranking": "규칙 점수 100점",
             "rule_points": RULE_POINTS,
             "rule_labels": RULE_LABELS,
             "max_points": MAX_POINTS,

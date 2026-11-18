@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Flutter web 을 빌드해 gh-pages 브랜치에 올립니다.
-# 사용: ./tools/deploy_pages.sh https://pet-signal-api.onrender.com
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -45,7 +43,6 @@ cleanup() { rm -rf "${TMP}"; }
 trap cleanup EXIT
 
 cp -a "${BUILD}/." "${TMP}/"
-# GitHub Pages 가 Jekyll 로 숨김 파일을 건너뛰지 않게
 touch "${TMP}/.nojekyll"
 
 git -C "${TMP}" init
@@ -55,7 +52,6 @@ git -C "${TMP}" config user.email "${EMAIL}"
 git -C "${TMP}" add -A
 git -C "${TMP}" commit -m "Deploy Flutter web (API_BASE_URL set at build time)"
 git -C "${TMP}" remote add origin "${ORIGIN}"
-# orphan 브랜치라 기존 gh-pages 와 히스토리가 다릅니다
 git -C "${TMP}" push -f origin gh-pages
 
 echo "올렸습니다. Pages 원본이 gh-pages / (root) 인지 확인하세요."

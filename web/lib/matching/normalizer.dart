@@ -1,8 +1,5 @@
-/// 품종·색상·나이·특징 표기 정규화 (보호자 vs 보호소 표기 차이 완화)
-///
-/// 서버(backend/app/services/normalizer.py)와 같은 규칙입니다. 한쪽을 고치면 다른 쪽도 고쳐 주세요.
 class Normalizer {
-  /// 순서 중요: 앞의 키가 먼저 매칭됩니다.
+
   static const breedSynonyms = <String, String>{
     '말티즈': 'maltese',
     '말티스': 'maltese',
@@ -92,7 +89,7 @@ class Normalizer {
     ('gray', 'black'),
   ];
 
-  /// 서로 가까운 색상 그룹 (흰색↔크림 등)
+
   static final Map<String, Set<String>> colorNeighbors = () {
     final m = <String, Set<String>>{};
     for (final (a, b) in _neighborPairs) {
@@ -132,7 +129,7 @@ class Normalizer {
     return t;
   }
 
-  /// 색상 코드 목록 (문자열에 나온 순서)
+
   static List<String> colorSet(String raw) {
     final t = _clean(raw);
     final found = <(int, String)>[];
@@ -149,7 +146,7 @@ class Normalizer {
     return cs.isNotEmpty ? cs.first : _clean(raw);
   }
 
-  /// '3살', '2~3년', '6개월', '2023(년생)' → 나이(년)
+
   static double? parseAgeYears(String? raw, {DateTime? today}) {
     if (raw == null || raw.trim().isEmpty) return null;
     if (raw.contains('일미만') || raw.contains('일 미만')) return 0.1;
@@ -175,7 +172,7 @@ class Normalizer {
   }
 
   static List<String> featureTokens(String text) {
-    // 파이썬 \w 와 같게: 문자·숫자·밑줄·한글
+
     final cleaned = text.toLowerCase().replaceAll(RegExp(r'[^\w가-힣\s]', unicode: true), ' ');
     final out = <String>[];
     for (final t in cleaned.split(RegExp(r'\s+'))) {

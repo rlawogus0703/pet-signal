@@ -1,5 +1,3 @@
-"""평가 그래프 (matplotlib). 한글 글꼴이 있으면 한글, 없으면 영어 라벨."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -46,7 +44,6 @@ def draw(summary: dict, curve: dict, out: Path) -> list[Path]:
     methods = list(LABEL_KO)
     paths = []
 
-    # 1) 난이도별 Top-5
     fig, ax = plt.subplots(figsize=(9, 4.8))
     groups = ["overall", "easy", "medium", "hard"]
     gl = (["전체", "쉬움", "보통", "어려움"] if ko else ["All", "Easy", "Medium", "Hard"])
@@ -69,7 +66,6 @@ def draw(summary: dict, curve: dict, out: Path) -> list[Path]:
     plt.close(fig)
     paths.append(p)
 
-    # 2) 누적 Top-K 곡선
     fig, ax = plt.subplots(figsize=(8, 4.8))
     ks = list(range(1, 51))
     for m in methods:

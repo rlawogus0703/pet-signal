@@ -1,5 +1,3 @@
-"""규칙 점수 100점 (김민재 앱과 같은 기준) 테스트."""
-
 from datetime import date
 
 from app.services.rule_points import MAX_POINTS, compute_rule_points, notice_region, region_key
@@ -17,7 +15,6 @@ def _pts(**kw):
 
 
 def test_app_example_65():
-    """앱 상세 화면 예: 품종 30 · 색상 25 · 지역 0 · 특징 0 · 날짜 10 = 65."""
     p = _pts()
     assert MAX_POINTS == 100
     assert p.total == 65
@@ -61,10 +58,8 @@ def test_region_key_parsing():
     assert region_key("세종특별자치시") == "세종"
     assert region_key("상적동 96-7") is None
     assert region_key("") is None
-    # 공고는 관할 기관(orgNm)을 먼저 봅니다
     assert notice_region("경기도 연천군", "대신면 무촌리") == "경기 연천군"
     assert notice_region("", "경기도 성남시 상적동 96-7") == "경기 성남시"
-    # 처음 보는 시·도 이름도 그대로 비교
     assert region_key("전남광주통합특별시 장흥군") == "전남광주통합특별시 장흥군"
 
 

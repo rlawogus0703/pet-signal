@@ -1,14 +1,3 @@
-"""이미지 기반 유사도 (교수님 피드백: 이미지 갈래).
-
-- AI 모드: open_clip(ViT-B-32) 또는 sentence-transformers CLIP 으로 사진 임베딩 → 코사인
-  (requirements-ai.txt 를 설치했을 때)
-- 기본(경량) 모드: Pillow 만으로 동작하는 '색상 히스토그램 + 차이 해시(dHash)' 특징
-  → 노트북(Windows, Python 3.10)에서 무거운 모델 없이도 시연 가능
-  웹(web/lib/matching/image_features.dart)도 같은 경량 알고리즘을 씁니다.
-
-임베딩은 방식(method)과 함께 저장하고, 방식이 다른 벡터끼리는 비교하지 않습니다.
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -38,7 +27,6 @@ HTTP_HEADERS = {
 
 
 def force_light_mode(on: bool = True) -> None:
-    """테스트·저사양 시연용: CLIP 이 설치돼 있어도 경량 방식만 사용."""
     global _FORCE_LIGHT
     _FORCE_LIGHT = on
 
@@ -63,7 +51,6 @@ def clip_available() -> bool:
     return _CLIP_OK
 
 
-# 예전 이름 호환
 ai_available = clip_available
 
 
@@ -97,13 +84,7 @@ def _load_clip():
     return _CLIP
 
 
-# ── 경량 특징: 64칸 색상 히스토그램 + 64비트 dHash ────────────────
 def light_features_from_rgb(pixels: Sequence[tuple[int, int, int]], w: int, h: int) -> list[float]:
-    """80x80 RGB 픽셀 → 가운데 64x64 를 잘라 특징 128개.
-
-    앞 64개: R,G,B 각 4단계(4x4x4) 결합 히스토그램 (합 1)
-    뒤 64개: 9x8 회색조 격자에서 가로 밝기 차이 비트 (dHash)
-    """
     ox, oy = (w - 64) // 2, (h - 64) // 2
     hist = [0.0] * 64
     gray_sum = [[0.0] * 9 for _ in range(8)]
@@ -133,22 +114,19 @@ def light_features_from_bytes(data: bytes) -> list[float] | None:
 
         img = Image.open(io.BytesIO(data)).convert("RGB").resize((80, 80), Image.BILINEAR)
         return light_features_from_rgb(list(img.getdata()), 80, 80)
-    except Exception as e:  # 손상 이미지 등
+    except Exception as e:
         log.debug("light feature failed: %s", e)
         return None
 
 
 def light_similarity(a: Sequence[float], b: Sequence[float]) -> float:
-    """히스토그램 교집합 0.7 + dHash 유사도 0.3 (우연 수준 0.5 를 0 으로)."""
     inter = sum(min(a[i], b[i]) for i in range(64))
     same = sum(1 for i in range(64, 128) if a[i] == b[i])
     dh = max(0.0, (same / 64.0 - 0.5) * 2.0)
     return max(0.0, min(1.0, 0.7 * inter + 0.3 * dh))
 
 
-# ── 공통 ──────────────────────────────────────────────────
 def embed_bytes(data: bytes) -> tuple[list[float] | None, str]:
-    """사진 바이트 → (임베딩, 방식)."""
     if clip_available():
         try:
             from PIL import Image
@@ -179,7 +157,6 @@ def similarity(a: Sequence[float] | None, b: Sequence[float] | None, method: str
     c = cosine(a, b)
     if c is None:
         return None
-    # CLIP: 강아지 사진끼리는 0.55 이하가 거의 없어 0.55~0.95 → 0~1 로 폅니다
     return max(0.0, min(1.0, (c - 0.55) / 0.40))
 
 
@@ -195,7 +172,6 @@ def cosine(a: Sequence[float] | None, b: Sequence[float] | None) -> float | None
     return max(0.0, min(1.0, float(dot / (na * nb))))
 
 
-# ── 다운로드 + 디스크 캐시 ─────────────────────────────────
 def cache_path_for(url: str) -> Path:
     return CACHE_DIR / (hashlib.sha1(url.encode("utf-8")).hexdigest() + ".img")
 
@@ -203,7 +179,6 @@ def cache_path_for(url: str) -> Path:
 def fetch_bytes(
     url: str | None, *, timeout: float = 8.0, client: httpx.Client | None = None, cache: bool = True
 ) -> bytes | None:
-    """URL 또는 로컬 경로의 사진 바이트. 실패하면 None (예외를 밖으로 던지지 않음)."""
     if not url:
         return None
     if not url.startswith("http"):
@@ -233,7 +208,7 @@ def fetch_bytes(
                 continue
             if not looks_like_image(r.content):
                 continue
-            if cache:  # 대량 임베딩 때는 디스크에 쌓지 않음 (웹 사진 프록시만 캐시)
+            if cache:
                 CACHE_DIR.mkdir(parents=True, exist_ok=True)
                 cp.write_bytes(r.content)
             return r.content
@@ -257,7 +232,6 @@ def looks_like_image(data: bytes | None) -> bool:
 
 
 def candidate_urls(url: str) -> list[str]:
-    """http/https 를 모두 시도합니다. animal.go.kr 는 http 가 500 을 주는 경우가 많아 https 를 먼저."""
     out: list[str] = []
 
     def add(u: str) -> None:
@@ -276,7 +250,6 @@ def candidate_urls(url: str) -> list[str]:
 
 
 def embed_image_url(url: str | None) -> list[float] | None:
-    """예전 API 호환: URL → 임베딩."""
     data = fetch_bytes(url)
     if data is None:
         return None

@@ -1,7 +1,7 @@
 import '../utils/photo_url.dart';
 import 'score_breakdown.dart';
 
-/// 유사 후보 (동일 개체 단정 아님)
+
 class Candidate {
   final String noticeId;
   final String noticeNo;
@@ -20,10 +20,10 @@ class Candidate {
   final ScoreBreakdown score;
   final List<String> reasons;
   final int rank;
-  // v2: 공고 상세 + 사진
-  final String source; // seed | animal_api
+
+  final String source;
   final String? photoUrl2;
-  final String? photoProxyUrl; // 서버 경유 사진 (절대 주소로 바꿔서 저장)
+  final String? photoProxyUrl;
   final String? photo2ProxyUrl;
   final String kindFull;
   final String sex;
@@ -72,14 +72,14 @@ class Candidate {
     this.matchedAttributes = const [],
   });
 
-  /// 화면에 띄울 공고 사진 주소 (서버 경유 우선 — 브라우저 CORS 문제 회피)
+
   String? get displayPhotoUrl => photoProxyUrl ?? photoUrl;
 
-  /// 목록 카드용 작은 미리보기 (상세 화면은 displayPhotoUrl 을 씁니다)
+
   String? get thumbUrl => photoThumbUrl(photoProxyUrl, photoUrl);
   String? get thumbFallbackUrl => photoThumbUrl(photo2ProxyUrl, photoUrl2);
 
-  /// 사용자 사진은 있는데 공고 사진이 없어 이미지 점수를 못 낸 경우
+
   bool get imageMissing => score.image == null && score.imageStatus != 'no_user_photo';
 
   static DateTime? _date(dynamic v) => v == null ? null : DateTime.tryParse('$v');

@@ -1,5 +1,3 @@
-"""텍스트 임베딩 — sentence-transformers 사용, 없으면 키워드 벡터 fallback."""
-
 from __future__ import annotations
 
 import hashlib
@@ -42,7 +40,6 @@ def _hash_vec(tokens: Sequence[str], dim: int = 64) -> list[float]:
     for t in tokens:
         h = int(hashlib.md5(t.encode("utf-8")).hexdigest(), 16)
         vec[h % dim] += 1.0
-    # L2 norm
     n = math.sqrt(sum(x * x for x in vec)) or 1.0
     return [x / n for x in vec]
 

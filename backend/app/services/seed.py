@@ -1,5 +1,3 @@
-"""예시 공고 시드 적재 (키 없이 시연하는 샘플 데이터 모드)."""
-
 from __future__ import annotations
 
 import json
@@ -76,14 +74,12 @@ def seed_notices(db: Session, *, embed_images: bool = True) -> int:
     return count
 
 
-
 def has_real_notices(db: Session) -> bool:
     n = db.scalar(select(func.count()).where(NoticeRow.source != "seed")) or 0
     return n > 0
 
 
 def remove_seed_notices(db: Session) -> int:
-    """실제 공공 API 공고가 있을 때 예시(시드) 공고와 관련 매칭/알림을 지웁니다."""
     ids = list(db.scalars(select(NoticeRow.notice_id).where(NoticeRow.source == "seed")))
     if not ids:
         return 0
@@ -95,7 +91,6 @@ def remove_seed_notices(db: Session) -> int:
 
 
 def seed_if_needed(db: Session) -> int:
-    """실제 공고가 있으면 시드를 넣지 않고, 남아 있는 시드 공고는 제거합니다."""
     if has_real_notices(db):
         removed = remove_seed_notices(db)
         if removed:

@@ -1,7 +1,6 @@
-/// 규칙 점수 한 항목 (예: 품종 30/30점 · 일치 (포메라니안))
 class RuleItem {
-  final String key; // breed | color | region | features | date
-  final String label; // 품종 | 색상 | 지역 | 특징 | 날짜
+  final String key;
+  final String label;
   final int points;
   final int max;
   final String reason;
@@ -19,41 +18,37 @@ class RuleItem {
       );
 }
 
-/// 매칭 점수
-///
-/// 순위 기준 = 규칙 점수 100점 (김민재 앱과 같은 기준): 품종 30 · 색상 25 · 지역 20 · 특징 15 · 날짜 10.
-/// 일치 근거를 합산한 점수이며 동일견일 확률이 아닙니다. total = points / 100.
-/// 아래 0~1 필드(rule/text/image 등)는 예전 멀티모달 방식 호환용으로 남겨 두었습니다.
+
 class ScoreBreakdown {
   static const defaultCaption = '일치 근거를 합산한 점수이며, 동일견일 확률이 아니에요.';
   static const defaultNote = '지역은 시군구 표기를 비교해요. 실제 거리와 사진 유사도는 계산하지 않아요. 구조 접수일은 실제 발견일과 다를 수 있어요.';
 
-  // 규칙 점수 100점
+
   final int? points;
   final int maxPoints;
   final List<RuleItem> items;
   final String caption;
   final String note;
-  // 규칙 항목
+
   final double breed;
   final double color;
   final double distance;
   final double date;
-  final double features; // = textKeyword (예전 필드 호환)
+  final double features;
   final double age;
-  // 세 갈래 + 최종
+
   final double? rule;
   final double? text;
   final double? image;
   final double total;
-  // 텍스트 세부
+
   final double? textKeyword;
   final double? textSemantic;
   final double? textAttribute;
   final String? textMethod;
-  // 이미지 세부
+
   final String? imageMethod;
-  final String? imageStatus; // ok | no_user_photo | no_notice_photo | fetch_failed
+  final String? imageStatus;
 
   const ScoreBreakdown({
     this.points,
@@ -81,7 +76,7 @@ class ScoreBreakdown {
 
   static double? _d(dynamic v) => (v as num?)?.toDouble();
 
-  /// 화면에 보여줄 점수 (0~100). 예전 응답이면 total 로 대신합니다.
+
   int get displayPoints => points ?? (total * 100).round();
 
   RuleItem? item(String key) {

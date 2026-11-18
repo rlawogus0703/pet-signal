@@ -12,7 +12,7 @@ import '../data/repository.dart';
 import '../models/lost_dog.dart';
 import '../models/user.dart';
 
-/// 내가 등록한 실종견 (화면 표시용 로컬 정보 포함)
+
 class MyDog {
   MyDog({required this.dog, required this.name, this.photoBytes, this.photoAsset});
   final LostDog dog;
@@ -21,10 +21,10 @@ class MyDog {
   final String? photoAsset;
 }
 
-/// 빌드 시 --dart-define=API_BASE_URL=... 로 넣으면 API 모드로 시작합니다.
+
 const String kBuiltInApiBaseUrl = String.fromEnvironment('API_BASE_URL');
 
-/// 앱 전역 상태: 모드(Mock/API), 인증, 내 실종견, 탭, 알림 수
+
 class AppState extends ChangeNotifier {
   AppState() {
     final builtIn = kBuiltInApiBaseUrl.trim();
@@ -133,7 +133,7 @@ class AppState extends ChangeNotifier {
     required double lostLng,
     required String lostAddress,
   }) async {
-    // 사진 바이트 (예시 사진이면 번들에서 읽기) → 이미지 유사도 계산에 사용
+
     var bytes = photoBytes;
     if (bytes == null && photoAsset != null) {
       try {

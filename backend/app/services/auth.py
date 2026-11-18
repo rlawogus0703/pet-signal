@@ -1,5 +1,3 @@
-"""회원가입/로그인 — passlib 해시 + JWT 토큰."""
-
 from __future__ import annotations
 
 import os

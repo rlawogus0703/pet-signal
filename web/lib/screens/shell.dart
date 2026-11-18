@@ -28,12 +28,12 @@ const _items = [
   _NavItem('마이페이지', Icons.person_outline_rounded, Icons.person_rounded),
 ];
 
-/// 반응형 앱 셸: 넓은 화면은 사이드 내비, 좁은 화면은 하단 내비
+
 class AppShell extends StatelessWidget {
   const AppShell({super.key});
 
   Widget _page(AppState s) {
-    // 서비스 소개는 로그인 없이 볼 수 있어요.
+
     if (s.showAbout) return const AboutScreen();
     final Widget page = switch (s.tab) {
       0 => const HomeScreen(),
@@ -43,7 +43,7 @@ class AppShell extends StatelessWidget {
       4 => const NotificationsScreen(),
       _ => const MyPageScreen(),
     };
-    // 홈·가까운 공고는 로그인 없이 볼 수 있어요. 등록·매칭은 로그인이 필요합니다.
+
     if (s.tab > 1 && !s.loggedIn) return const AuthScreen(embedded: true);
     return page;
   }
@@ -170,7 +170,7 @@ class _AboutNavTile extends StatelessWidget {
                   children: [
                     Text('서비스 소개', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
                     SizedBox(height: 2),
-                    Text('매칭 방식 · 학회 소개', style: TextStyle(fontSize: 11.5, color: AppColors.subtext)),
+                    Text('매칭 방식 · 서비스 소개', style: TextStyle(fontSize: 11.5, color: AppColors.subtext)),
                   ],
                 ),
               ),
@@ -346,7 +346,7 @@ class _ModeButton extends StatelessWidget {
             children: [
               Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
               const SizedBox(width: 6),
-              Text(compact ? (api ? 'API' : 'Mock') : (api ? 'API 서버 연결' : 'Mock 시연 모드'),
+              Text(compact ? (api ? 'API' : 'Mock') : (api ? 'API 서버 연결' : 'Mock 모드'),
                   style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: color)),
             ],
           ),
@@ -399,7 +399,7 @@ class _ModeDialogState extends State<ModeDialog> {
                 decoration: const InputDecoration(labelText: '서버 주소', hintText: 'http://127.0.0.1:8000'),
               )
             else
-              const Text('서버 없이 예시 공고 16건과 웹 내장 매칭 엔진으로 동작해요. 학회 시연에 가장 안전한 모드예요.',
+              const Text('서버 없이 예시 공고 16건과 웹 내장 매칭 엔진으로 동작해요.',
                   style: TextStyle(color: AppColors.subtext)),
             const SizedBox(height: 12),
             const Text('모드를 바꾸면 로그인이 초기화돼요.', style: TextStyle(fontSize: 12.5, color: AppColors.subtext)),

@@ -1,5 +1,3 @@
-"""공고·실종견 사진 미리보기(size=thumb / w=). 매칭·임베딩은 건드리지 않습니다."""
-
 from __future__ import annotations
 
 import base64
@@ -97,15 +95,12 @@ def test_notice_photo_thumb_smaller_than_original(tmp_path, monkeypatch):
         im = Image.open(io.BytesIO(thumb.content))
         assert im.mode == "RGB" and max(im.size) == 400
 
-        # 원본은 그대로
         again = client.get("/api/v1/notices/T1/photo")
         assert again.content == orig.content
 
-        # 알 수 없는 size 는 원본
         unk = client.get("/api/v1/notices/T1/photo", params={"size": "full"})
         assert unk.content == orig.content
 
-        # w= 와 n=2 조합 (?n=2&size=thumb)
         t2 = client.get("/api/v1/notices/T1/photo", params={"n": 2, "size": "thumb", "w": 200})
         assert t2.status_code == 200
         im2 = Image.open(io.BytesIO(t2.content))
@@ -143,13 +138,11 @@ def test_thumb_memory_and_disk_cache(tmp_path, monkeypatch):
         on_disk = disk[0].read_bytes()
         assert on_disk == r1.content
 
-        # 디스크를 지워도 메모리 캐시에서 나옴
         disk[0].unlink()
         r2 = client.get("/api/v1/notices/T2/photo?size=thumb")
         assert r2.content == r1.content
         assert not disk[0].exists()
 
-        # 메모리를 비우면 다시 만들어 디스크에 씀
         image_index.clear_thumb_cache()
         r3 = client.get("/api/v1/notices/T2/photo?size=thumb")
         assert r3.content == r1.content
@@ -161,7 +154,6 @@ def test_thumb_memory_and_disk_cache(tmp_path, monkeypatch):
 
 def test_lost_dog_photo_thumb(tmp_path, monkeypatch):
     client, _TS = _client(tmp_path, monkeypatch)
-    # 업로드 경로도 테스트 임시 폴더로
     monkeypatch.setattr(image_index, "UPLOAD_DIR", tmp_path / "uploads")
     try:
         photo = (DOGS / "maltese_white.jpg").read_bytes()

@@ -4,7 +4,7 @@ import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common.dart';
 
-/// 로그인 / 회원가입 (한 화면에서 전환)
+
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key, this.embedded = false, this.startWithSignup = false});
   final bool embedded;

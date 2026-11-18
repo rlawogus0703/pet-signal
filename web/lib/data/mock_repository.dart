@@ -14,8 +14,7 @@ import 'mock_data.dart';
 import 'options.dart';
 import 'repository.dart';
 
-/// 오프라인 시연용: 예시 공고 + Dart 스코어러 (서버와 같은 규칙 점수 100점)
-/// 사진 유사도는 번들 사진(assets/dogs)과 업로드 사진의 경량 특징으로 계산합니다.
+
 class MockRepository implements PetSignalRepository {
   final _uuid = const Uuid();
   final _scorer = RuleScorer();
@@ -69,7 +68,7 @@ class MockRepository implements PetSignalRepository {
     _dogs[dog.id] = dog;
     if (photoBytes != null) _dogFeatures[dog.id] = await ImageFeatures.fromBytes(photoBytes);
 
-    // 시연 연출: 매칭 계산 시간
+
     await Future<void>.delayed(const Duration(milliseconds: 700));
     final ranked = await _rank(dog);
     final now = DateTime.now();

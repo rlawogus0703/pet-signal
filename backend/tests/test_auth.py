@@ -1,5 +1,3 @@
-"""회원가입/로그인 테스트."""
-
 from fastapi.testclient import TestClient
 
 from app.database import Base, SessionLocal, engine, init_db
@@ -14,10 +12,8 @@ def test_password_hash_roundtrip():
 
 
 def test_signup_login_me(tmp_path, monkeypatch):
-    # 격리된 sqlite
     db_url = f"sqlite:///{tmp_path/'test.db'}"
     monkeypatch.setenv("DATABASE_URL", db_url)
-    # recreate engine bindings for test — use app's init
     from app import database as dbmod
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
@@ -40,22 +36,21 @@ def test_signup_login_me(tmp_path, monkeypatch):
 
     r = client.post(
         "/auth/signup",
-        json={"email": "jaehyun@example.com", "password": "pass1234", "name": "재현", "phone": "010-1111-2222"},
+        json={"email": "user@example.com", "password": "pass1234", "name": "홍길동", "phone": "010-1111-2222"},
     )
     assert r.status_code == 201, r.text
     data = r.json()
     assert "access_token" in data
-    assert data["user"]["email"] == "jaehyun@example.com"
+    assert data["user"]["email"] == "user@example.com"
 
-    r2 = client.post("/auth/login", json={"email": "jaehyun@example.com", "password": "pass1234"})
+    r2 = client.post("/auth/login", json={"email": "user@example.com", "password": "pass1234"})
     assert r2.status_code == 200
     token = r2.json()["access_token"]
 
     r3 = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert r3.status_code == 200
-    assert r3.json()["name"] == "재현"
+    assert r3.json()["name"] == "홍길동"
 
-    # lost dog linked to user
     r4 = client.post(
         "/api/v1/lost-dogs",
         headers={"Authorization": f"Bearer {token}"},

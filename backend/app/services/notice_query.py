@@ -1,5 +1,3 @@
-"""로그인 없이 주변 보호소 공고를 찾아 보는 조회."""
-
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
@@ -22,7 +20,6 @@ def _today() -> date:
 
 
 def resolve_origin(lat: float | None, lng: float | None, region: str | None) -> tuple[float, float, str]:
-    """사용자 좌표가 있으면 그걸, 없으면 시·도/시군구(기본 서울) 중심."""
     if lat is not None and lng is not None:
         label = (region or "").strip() or "현재 위치"
         return float(lat), float(lng), label
@@ -57,7 +54,6 @@ def _color_ok(notice: NoticeRow, color: str | None) -> bool:
     nc = notice.color_norm or norm_color(notice.color)
     if nq and nc and nq == nc:
         return True
-    # 이웃 색(흰색↔크림색 등)도 허용
     return bool(set(color_set(q)) & set(color_set(notice.color or "")))
 
 
