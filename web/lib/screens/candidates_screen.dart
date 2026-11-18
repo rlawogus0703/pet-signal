@@ -139,7 +139,7 @@ class _CandidatesScreenState extends State<CandidatesScreen> {
       return const StateView(
         icon: Icons.search_off_rounded,
         title: '아직 유사 후보가 없어요',
-        message: '새로운 공고가 수집되면 알림으로 알려드릴게요.',
+        message: '새로운 유사 후보가 생기면 알림으로 알려드릴게요.',
       );
     }
     if (list.isEmpty) {

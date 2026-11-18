@@ -22,7 +22,7 @@ class AboutScreen extends StatelessWidget {
         const SizedBox(height: Gap.m),
         _Grid(narrow: narrow, children: const [
           _ProblemCard(Icons.refresh_rounded, '매일 반복되는 검색', '공고가 매일 새로 올라와 보호자가 같은 확인을 계속 반복해야 해요.',
-              '서버가 공공데이터 API로 공고를 자동 수집하고, 새 후보가 생기면 알려드려요.'),
+              '서버가 공공데이터 API의 공고를 모아 두고, 새 후보가 생기면 알려드려요.'),
           _ProblemCard(Icons.map_outlined, '구조 장소 ≠ 실종 장소', '강아지가 다른 동네에서 구조되면 지역을 바꿔 가며 여러 번 찾아야 해요.',
               '실종 위치와의 실제 거리로 점수를 매겨 지역 경계 없이 찾아요.'),
           _ProblemCard(Icons.translate_rounded, '서로 다른 표기', '“흰색 말티즈”가 공고에는 “크림색 믹스견”으로 올라오면 검색에서 빠져요.',
@@ -35,7 +35,7 @@ class AboutScreen extends StatelessWidget {
         const SizedBox(height: Gap.m),
         _Grid(narrow: narrow, columns: 4, children: const [
           _StepCard(1, Icons.edit_note_rounded, '실종견 등록', '사진, 품종, 색상, 나이, 실종 날짜·위치, 특징을 입력해요.'),
-          _StepCard(2, Icons.cloud_sync_rounded, '공고 자동 수집', '농림축산검역본부 구조동물 API를 주기적으로 받아 표기를 통일해요.'),
+          _StepCard(2, Icons.cloud_sync_rounded, '공고 불러오기', '농림축산검역본부 구조동물 API의 공고를 받아 표기를 통일해요.'),
           _StepCard(3, Icons.rule_rounded, '규칙 점수 매칭', '품종 30 · 색상 25 · 지역 20 · 특징 15 · 날짜 10, 100점 만점으로 합산해요.'),
           _StepCard(4, Icons.notifications_active_rounded, '추천 이유·알림', '항목별 점수와 이유를 보여주고 새 후보를 알림으로 보내요.'),
         ]),
@@ -95,7 +95,7 @@ class _AboutHeader extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           const Text(
-            '펫 시그널은 전국 보호소 공고를 매일 자동으로 모아, 등록한 실종견과 닮은 유사 후보를 순위대로 보여주고, 품종·색상·지역·특징·날짜 중 어떤 점이 일치하는지 항목별 점수와 근거를 함께 알려드려요.',
+            '펫 시그널은 전국 보호소 공고를 모아, 등록한 실종견과 닮은 유사 후보를 순위대로 보여주고, 품종·색상·지역·특징·날짜 중 어떤 점이 일치하는지 항목별 점수와 근거를 함께 알려드려요.',
             style: TextStyle(color: Color(0xFFC9D2E3), fontSize: 15.5, height: 1.65),
           ),
         ],
@@ -133,7 +133,7 @@ class _Stats extends StatelessWidget {
     final narrow = MediaQuery.sizeOf(context).width < 760;
     return _Grid(narrow: false, columns: narrow ? 2 : 4, children: const [
       _Stat('95,685', '마리', '2025년 전국 동물보호센터에\n입소한 유실·유기동물', '농림축산식품부 2025 실태조사'),
-      _Stat('매일', '', '공공데이터 API로\n보호소 공고 자동 수집', '농림축산검역본부 구조동물 API'),
+      _Stat('6,000+', '건', '공공데이터 API로\n받아 둔 보호소 공고', '농림축산검역본부 구조동물 API'),
       _Stat('100', '점', '규칙 점수\n품종·색상·지역·특징·날짜', '앱·웹 같은 기준'),
       _Stat('Top 5', '', '상위 5개 후보 안에\n실제 강아지 포함 여부로 평가', '평가 지표'),
     ]);
@@ -317,7 +317,7 @@ class _TechStack extends StatelessWidget {
       ('Flutter', '웹·앱 클라이언트'),
       ('FastAPI', '매칭 API 서버'),
       ('PostgreSQL', '공고·매칭 DB'),
-      ('공공데이터 API', '구조동물 공고 수집'),
+      ('공공데이터 API', '구조동물 공고 제공'),
       ('규칙 점수 엔진', '품종·색상·지역·특징·날짜 100점'),
       ('Pillow', '목록용 작은 미리보기 사진'),
       ('FCM', '신규 후보 푸시 알림'),
