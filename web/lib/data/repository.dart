@@ -19,6 +19,7 @@ abstract class PetSignalRepository {
     required double lostLat,
     required double lostLng,
     required String lostAddress,
+    String species = 'dog',
   });
 
   Future<LostDog> getLostDog(String id);
@@ -37,6 +38,7 @@ abstract class PetSignalRepository {
     double? lng,
     String? region,
     String? kind,
+    String? species,
     String? color,
     int? days,
     double? radius,

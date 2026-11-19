@@ -45,6 +45,7 @@ class ApiRepository implements PetSignalRepository {
     required double lostLat,
     required double lostLng,
     required String lostAddress,
+    String species = 'dog',
   }) async {
     final body = {
       'photo_url': photoUrl,
@@ -58,6 +59,7 @@ class ApiRepository implements PetSignalRepository {
       'lost_lat': lostLat,
       'lost_lng': lostLng,
       'lost_address': lostAddress,
+      'species': species,
     };
     final res = await _client.post(
       _u('/api/v1/lost-dogs'),
@@ -126,6 +128,7 @@ class ApiRepository implements PetSignalRepository {
     double? lng,
     String? region,
     String? kind,
+    String? species,
     String? color,
     int? days,
     double? radius,
@@ -139,6 +142,7 @@ class ApiRepository implements PetSignalRepository {
       if (lng != null) 'lng': '$lng',
       if (region != null && region.isNotEmpty) 'region': region,
       if (kind != null && kind.isNotEmpty) 'kind': kind,
+      if (species != null && species.isNotEmpty) 'species': species,
       if (color != null && color.isNotEmpty) 'color': color,
       if (days != null) 'days': '$days',
       if (radius != null) 'radius': '$radius',

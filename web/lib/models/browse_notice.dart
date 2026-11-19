@@ -30,6 +30,7 @@ class BrowseNotice {
   final DateTime? noticeEnd;
   final String noticeUrl;
   final String source;
+  final String species;
 
   const BrowseNotice({
     required this.noticeId,
@@ -60,6 +61,7 @@ class BrowseNotice {
     this.noticeEnd,
     this.noticeUrl = '',
     this.source = 'seed',
+    this.species = 'dog',
   });
 
   String? get displayPhotoUrl => photoProxyUrl ?? photoUrl;
@@ -113,6 +115,7 @@ class BrowseNotice {
       noticeEnd: _date(j['notice_end']),
       noticeUrl: (j['notice_url'] as String?) ?? '',
       source: (j['source'] as String?) ?? 'seed',
+      species: (j['species'] as String?) ?? 'dog',
     );
   }
 }

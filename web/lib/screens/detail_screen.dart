@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../data/options.dart';
 import '../matching/explain.dart';
 import '../matching/normalizer.dart';
 import '../models/candidate.dart';
@@ -106,7 +107,7 @@ class _DetailScreenState extends State<DetailScreen> {
           ),
         ]);
     final mine = labeled(
-        DogPhoto(bytes: d.photoBytes, asset: d.photoAsset, radius: 20), '내 강아지 · ${d.name}');
+        DogPhoto(bytes: d.photoBytes, asset: d.photoAsset, radius: 20), '내 ${speciesLabel(d.dog.species)} · ${d.name}');
     final shelter = labeled(
         DogPhoto(
           url: c.displayPhotoUrl,
@@ -246,7 +247,7 @@ class _DetailScreenState extends State<DetailScreen> {
           const SizedBox(height: 8),
           Text(s.note, style: const TextStyle(fontSize: 14, color: AppColors.text, height: 1.55)),
           const SizedBox(height: 14),
-          const Text('같은 강아지인지 사진과 공고 원문을 확인하고 보호소에 문의해 주세요.',
+          const Text('같은 아이인지 사진과 공고 원문을 확인하고 보호소에 문의해 주세요.',
               style: TextStyle(fontSize: 14, color: AppColors.text, height: 1.55)),
         ],
       ),
@@ -276,7 +277,7 @@ class _DetailScreenState extends State<DetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SectionTitle('내 강아지 vs 후보 비교', subtitle: '규칙 점수 항목마다 일치 여부를 표시해요'),
+          SectionTitle('내 ${speciesLabel(widget.myDog.dog.species)} vs 후보 비교', subtitle: '규칙 점수 항목마다 일치 여부를 표시해요'),
           const SizedBox(height: 20),
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             head(widget.myDog.name,

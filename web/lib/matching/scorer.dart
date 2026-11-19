@@ -31,7 +31,7 @@ class RuleScorer {
   List<Candidate> rank(LostDog dog, List<Notice> notices,
       {Map<String, double?>? imageScores, bool hasUserPhoto = false}) {
     final scored = [
-      for (final n in notices)
+      for (final n in notices.where((n) => n.species == dog.species))
         scoreOne(dog, n, image: imageScores?[n.noticeId], hasUserPhoto: hasUserPhoto && imageScores != null)
     ];
     scored.sort((a, b) {

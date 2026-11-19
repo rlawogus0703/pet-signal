@@ -17,6 +17,7 @@ class Notice {
   final DateTime? noticeStart;
   final DateTime? noticeEnd;
   final String weight;
+  final String species;
 
   const Notice({
     required this.noticeId,
@@ -37,5 +38,6 @@ class Notice {
     this.noticeStart,
     this.noticeEnd,
     this.weight = '',
+    this.species = 'dog',
   });
 }

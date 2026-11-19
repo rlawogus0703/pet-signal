@@ -51,6 +51,7 @@ class MockRepository implements PetSignalRepository {
     required double lostLat,
     required double lostLng,
     required String lostAddress,
+    String species = 'dog',
   }) async {
     final dog = LostDog(
       id: _uuid.v4(),
@@ -64,6 +65,7 @@ class MockRepository implements PetSignalRepository {
       lostLng: lostLng,
       lostAddress: lostAddress,
       createdAt: DateTime.now(),
+      species: species,
     );
     _dogs[dog.id] = dog;
     if (photoBytes != null) _dogFeatures[dog.id] = await ImageFeatures.fromBytes(photoBytes);
@@ -158,6 +160,7 @@ class MockRepository implements PetSignalRepository {
       noticeUrl: n.noticeUrl,
       weight: n.weight,
       source: 'seed',
+      species: n.species,
     );
   }
 
@@ -167,6 +170,7 @@ class MockRepository implements PetSignalRepository {
     double? lng,
     String? region,
     String? kind,
+    String? species,
     String? color,
     int? days,
     double? radius,
@@ -193,6 +197,7 @@ class MockRepository implements PetSignalRepository {
     final cutoff = days == null ? null : now.subtract(Duration(days: days));
     final rows = <BrowseNotice>[];
     for (final n in exampleNotices()) {
+      if (species != null && species.isNotEmpty && n.species != species) continue;
       if (kind != null && kind.trim().isNotEmpty) {
         final q = Normalizer.normBreed(kind);
         if (q != Normalizer.normBreed(n.breed) && !n.breed.contains(kind.trim())) continue;

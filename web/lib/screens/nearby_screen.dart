@@ -29,6 +29,7 @@ class _NearbyScreenState extends State<NearbyScreen> {
   double? _lng;
   late String _sido;
   String? _sigungu;
+  String? _species;
   String? _kind;
   String? _color;
   int? _days = 30;
@@ -125,6 +126,7 @@ class _NearbyScreenState extends State<NearbyScreen> {
         lng: _useGps ? _lng : null,
         region: _useGps ? null : _regionLabel,
         kind: _kind,
+        species: _species,
         color: _color,
         days: _days,
         radius: _radius,
@@ -273,11 +275,29 @@ class _NearbyScreenState extends State<NearbyScreen> {
         ),
         DropdownButtonHideUnderline(
           child: DropdownButton<String?>(
+            value: _species,
+            items: const [
+              DropdownMenuItem<String?>(value: null, child: Text('동물 전체')),
+              DropdownMenuItem<String?>(value: 'dog', child: Text('강아지')),
+              DropdownMenuItem<String?>(value: 'cat', child: Text('고양이')),
+            ],
+            onChanged: (v) {
+              setState(() {
+                _species = v;
+                _kind = null;
+              });
+              _reload(reset: true);
+            },
+          ),
+        ),
+        DropdownButtonHideUnderline(
+          child: DropdownButton<String?>(
             value: _kind,
             hint: const Text('품종'),
             items: [
               const DropdownMenuItem<String?>(value: null, child: Text('품종 전체')),
-              for (final b in breedOptions) DropdownMenuItem<String?>(value: b, child: Text(b)),
+              for (final b in _species == null ? [...breedOptions, ...catBreedOptions] : breedsFor(_species!))
+                DropdownMenuItem<String?>(value: b, child: Text(b)),
             ],
             onChanged: (v) {
               setState(() => _kind = v);
@@ -291,7 +311,8 @@ class _NearbyScreenState extends State<NearbyScreen> {
             hint: const Text('색상'),
             items: [
               const DropdownMenuItem<String?>(value: null, child: Text('색상 전체')),
-              for (final c in colorOptions) DropdownMenuItem<String?>(value: c.label, child: Text(c.label)),
+              for (final c in [...colorOptions, if (_species != 'dog') ...catColorOptions])
+                DropdownMenuItem<String?>(value: c.label, child: Text(c.label)),
             ],
             onChanged: (v) {
               setState(() => _color = v);

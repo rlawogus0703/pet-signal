@@ -9,6 +9,15 @@ const breedOptions = <String>[
   '보더콜리', '사모예드', '퍼그',
 ];
 
+const catBreedOptions = <String>[
+  '코리안숏헤어', '러시안블루', '페르시안', '스코티시폴드', '브리티시숏헤어', '먼치킨', '샴', '렉돌',
+  '노르웨이숲', '아비시니안', '벵갈', '터키시앙고라', '메인쿤', '스핑크스', '믹스',
+];
+
+List<String> breedsFor(String species) => species == 'cat' ? catBreedOptions : breedOptions;
+
+String speciesLabel(String species) => species == 'cat' ? '고양이' : '강아지';
+
 class ColorOption {
   const ColorOption(this.label, this.color);
   final String label;
@@ -24,6 +33,12 @@ const colorOptions = <ColorOption>[
   ColorOption('회색', Color(0xFF9CA3AF)),
   ColorOption('삼색', Color(0xFFC08A5B)),
   ColorOption('얼룩', Color(0xFFD6CFC7)),
+];
+
+const catColorOptions = <ColorOption>[
+  ColorOption('치즈', Color(0xFFF0B45A)),
+  ColorOption('고등어', Color(0xFF8B8F8A)),
+  ColorOption('턱시도', Color(0xFF2B2B2B)),
 ];
 
 class Region {

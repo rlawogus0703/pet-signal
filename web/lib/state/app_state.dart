@@ -132,6 +132,7 @@ class AppState extends ChangeNotifier {
     required double lostLat,
     required double lostLng,
     required String lostAddress,
+    String species = 'dog',
   }) async {
 
     var bytes = photoBytes;
@@ -150,6 +151,7 @@ class AppState extends ChangeNotifier {
       lostLat: lostLat,
       lostLng: lostLng,
       lostAddress: lostAddress,
+      species: species,
     );
     final list = _dogs.putIfAbsent(_key, () => []);
     list.insert(0, MyDog(dog: dog, name: name, photoBytes: photoBytes, photoAsset: photoAsset));

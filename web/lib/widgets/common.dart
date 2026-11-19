@@ -248,8 +248,8 @@ class DisclaimerBanner extends StatelessWidget {
                 const TextSpan(text: '유사 후보', style: TextStyle(fontWeight: FontWeight.w800)),
                 TextSpan(
                     text: compact
-                        ? '입니다. 같은 강아지로 단정하지 않아요. 공고 원문과 사진을 꼭 확인하세요.'
-                        : '입니다. 펫 시그널은 같은 강아지라고 단정하지 않아요. 최종 확인은 공고 원문·사진을 보고 보호자와 보호소가 직접 해 주세요.'),
+                        ? '입니다. 같은 아이로 단정하지 않아요. 공고 원문과 사진을 꼭 확인하세요.'
+                        : '입니다. 펫 시그널은 같은 아이라고 단정하지 않아요. 최종 확인은 공고 원문·사진을 보고 보호자와 보호소가 직접 해 주세요.'),
               ]),
               style: const TextStyle(fontSize: 13.5, color: Color(0xFF7C4A03), height: 1.5),
             ),

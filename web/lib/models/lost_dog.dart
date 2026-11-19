@@ -10,6 +10,7 @@ class LostDog {
   final double lostLng;
   final String lostAddress;
   final DateTime createdAt;
+  final String species;
 
   LostDog({
     required this.id,
@@ -23,6 +24,7 @@ class LostDog {
     required this.lostLng,
     required this.lostAddress,
     required this.createdAt,
+    this.species = 'dog',
   });
 
   factory LostDog.fromJson(Map<String, dynamic> j) => LostDog(
@@ -37,6 +39,7 @@ class LostDog {
         lostLng: (j['lost_lng'] as num).toDouble(),
         lostAddress: j['lost_address'] as String? ?? '',
         createdAt: DateTime.parse(j['created_at'] as String),
+        species: (j['species'] as String?) ?? 'dog',
       );
 
   Map<String, dynamic> toCreateJson() => {
@@ -50,5 +53,6 @@ class LostDog {
         'lost_lat': lostLat,
         'lost_lng': lostLng,
         'lost_address': lostAddress,
+        'species': species,
       };
 }

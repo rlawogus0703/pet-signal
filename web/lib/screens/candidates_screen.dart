@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/options.dart';
 import '../matching/explain.dart';
 import '../models/candidate.dart';
 import '../state/app_state.dart';
@@ -222,7 +223,7 @@ class _DogHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('내가 찾는 강아지', style: TextStyle(color: Color(0xFFC9D2E3), fontSize: 12.5)),
+                Text('내가 찾는 ${speciesLabel(d.species)}', style: TextStyle(color: Color(0xFFC9D2E3), fontSize: 12.5)),
                 const SizedBox(height: 2),
                 Text('${dog.name} · ${d.color} ${d.breed}',
                     style: const TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w800)),
@@ -237,7 +238,7 @@ class _DogHeader extends StatelessWidget {
           ),
           if (dogs.length > 1 && !narrow)
             PopupMenuButton<String>(
-              tooltip: '다른 강아지 보기',
+              tooltip: '다른 아이 보기',
               onSelected: state.selectDog,
               itemBuilder: (_) => [
                 for (final x in dogs)
@@ -249,7 +250,7 @@ class _DogHeader extends StatelessWidget {
                 child: const Row(children: [
                   Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 18),
                   SizedBox(width: 6),
-                  Text('강아지 변경', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                  Text('아이 변경', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
                 ]),
               ),
             )

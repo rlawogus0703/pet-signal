@@ -30,6 +30,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Uint8List? _photo;
   String? _photoAsset;
   DateTime? _lostDate;
+  String _species = 'dog';
   String _sido = '경기도';
   Region? _region;
   bool _busy = false;
@@ -112,6 +113,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         lostLat: double.tryParse(_lat.text) ?? _region!.lat,
         lostLng: double.tryParse(_lng.text) ?? _region!.lng,
         lostAddress: '${_region!.label} ${_address.text.trim()}'.trim(),
+        species: _species,
       );
       s.goTab(3);
     } catch (e) {
@@ -148,7 +150,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('실종견 등록', style: Theme.of(context).textTheme.headlineMedium),
+                  Text(_species == 'cat' ? '실종묘 등록' : '실종견 등록', style: Theme.of(context).textTheme.headlineMedium),
                   const SizedBox(height: 4),
                   const Text('자세히 적을수록 유사 후보를 더 정확하게 찾아요. 등록 즉시 매칭이 시작돼요.',
                       style: TextStyle(color: AppColors.subtext)),
@@ -194,14 +196,31 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _photo = null;
         _photoAsset = null;
       }),
-      onSample: () => setState(() {
-        _photo = null;
-        _photoAsset = 'assets/dogs/my_maltese.jpg';
-      }),
+      onSample: _species == 'cat'
+          ? null
+          : () => setState(() {
+                _photo = null;
+                _photoAsset = 'assets/dogs/my_maltese.jpg';
+              }),
     );
     final fields = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        SegmentedButton<String>(
+          segments: const [
+            ButtonSegment(value: 'dog', label: Text('🐶 강아지')),
+            ButtonSegment(value: 'cat', label: Text('🐱 고양이')),
+          ],
+          selected: {_species},
+          showSelectedIcon: false,
+          onSelectionChanged: (v) => setState(() {
+            if (v.first == _species) return;
+            _species = v.first;
+            _breed.clear();
+            if (_species == 'cat' && _photoAsset != null) _photoAsset = null;
+          }),
+        ),
+        const SizedBox(height: 14),
         TextFormField(
           controller: _name,
           decoration: const InputDecoration(labelText: '이름 (선택)', hintText: '예: 콩이'),
@@ -217,7 +236,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           leadingIcon: const Icon(Icons.pets_rounded),
           errorText: _submitted && _breed.text.trim().isEmpty ? '품종을 입력해 주세요' : null,
           menuHeight: 300,
-          dropdownMenuEntries: [for (final b in breedOptions) DropdownMenuEntry(value: b, label: b)],
+          key: ValueKey('breed-$_species'),
+          dropdownMenuEntries: [for (final b in breedsFor(_species)) DropdownMenuEntry(value: b, label: b)],
           onSelected: (_) => setState(() {}),
         ),
         const SizedBox(height: 14),
@@ -251,7 +271,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            for (final c in colorOptions)
+            for (final c in [...colorOptions, if (_species == 'cat') ...catColorOptions])
               ChoiceChip(
                 selected: _color.text == c.label,
                 showCheckmark: false,
@@ -364,7 +384,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _featureSection() {
-    const tags = ['빨간 목걸이', '귀가 접힘', '귀가 서 있음', '꼬리 말림', '소형', '중형', '중성화', '옷 착용', '겁이 많음', '사람을 잘 따름'];
+    final tags = _species == 'cat'
+        ? const ['목걸이', '귀가 접힘', '꼬리 짧음', '중성화', '귀 끝 컷팅', '겁이 많음', '사람을 잘 따름']
+        : const ['빨간 목걸이', '귀가 접힘', '귀가 서 있음', '꼬리 말림', '소형', '중형', '중성화', '옷 착용', '겁이 많음', '사람을 잘 따름'];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -487,12 +509,12 @@ extension on String {
 }
 
 class _PhotoDrop extends StatelessWidget {
-  const _PhotoDrop({this.bytes, this.asset, required this.onPick, required this.onClear, required this.onSample});
+  const _PhotoDrop({this.bytes, this.asset, required this.onPick, required this.onClear, this.onSample});
   final Uint8List? bytes;
   final String? asset;
   final VoidCallback onPick;
   final VoidCallback onClear;
-  final VoidCallback onSample;
+  final VoidCallback? onSample;
 
   @override
   Widget build(BuildContext context) {
@@ -534,7 +556,7 @@ class _PhotoDrop extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Wrap(spacing: 4, children: [
-          TextButton(onPressed: onSample, child: const Text('예시 사진 사용')),
+          if (onSample != null) TextButton(onPressed: onSample, child: const Text('예시 사진 사용')),
           TextButton(onPressed: onClear, child: const Text('사진 없이 등록')),
         ]),
         const Text('사진이 없어도 등록할 수 있어요.', style: TextStyle(fontSize: 12, color: AppColors.subtext)),
