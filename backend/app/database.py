@@ -63,9 +63,13 @@ def _add_missing_columns(eng) -> None:
                 if col.name in have:
                     continue
                 ddl_type = col.type.compile(dialect=eng.dialect)
+                default = ""
+                sd = getattr(col.server_default, "arg", None)
+                if isinstance(sd, str):
+                    default = " DEFAULT '" + sd.replace("'", "''") + "'"
                 if dialect == "postgresql":
                     conn.execute(
-                        text(f'ALTER TABLE "{table.name}" ADD COLUMN IF NOT EXISTS "{col.name}" {ddl_type}')
+                        text(f'ALTER TABLE "{table.name}" ADD COLUMN IF NOT EXISTS "{col.name}" {ddl_type}{default}')
                     )
                 else:
-                    conn.execute(text(f"ALTER TABLE {table.name} ADD COLUMN {col.name} {ddl_type}"))
+                    conn.execute(text(f"ALTER TABLE {table.name} ADD COLUMN {col.name} {ddl_type}{default}"))

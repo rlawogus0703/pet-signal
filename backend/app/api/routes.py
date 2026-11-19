@@ -36,6 +36,7 @@ from app.services.matching_service import rematch_lost_dog
 from app.services.notice_state import STALE_STATE
 from app.services.notice_query import load_notice, list_nearby
 from app.services.seed import seed_notices
+from app.sources.animal_api import SPECIES_UPKIND
 
 router = APIRouter(prefix="/api/v1")
 
@@ -61,6 +62,7 @@ def _dog_out(row: LostDogRow) -> LostDogOut:
         has_photo=bool(row.photo_path),
         photo_proxy_url=f"/api/v1/lost-dogs/{row.id}/photo" if row.photo_path else None,
         image_method=row.image_embed_method,
+        species=row.species or "dog",
     )
 
 
@@ -118,6 +120,7 @@ def _candidate_out(match: MatchResultRow, notice: NoticeRow, rank: int) -> Candi
         photo_proxy_url=f"/api/v1/notices/{nid}/photo" if has_photo else None,
         photo2_proxy_url=f"/api/v1/notices/{nid}/photo?n=2" if notice.photo_url2 else None,
         kind_full=notice.kind_full or "",
+        species=notice.species or "dog",
         sex=notice.sex or "",
         neuter=notice.neuter or "",
         weight=notice.weight or "",
@@ -196,6 +199,7 @@ def register_lost_dog(
         lost_lat=body.lost_lat,
         lost_lng=body.lost_lng,
         lost_address=body.lost_address,
+        species=body.species,
         created_at=_now(),
     )
     photo = _decode_photo(body.photo_data)
@@ -334,6 +338,7 @@ def admin_collect(
     pages: int | None = Query(None, ge=1, le=20, description="상태별 최대 페이지 (기본: 설정값)"),
     rows: int | None = Query(None, ge=1, le=1000, description="페이지당 건수 (기본 1000)"),
     embed_images: bool = Query(True),
+    species: str | None = Query(None, pattern="^(dog|cat)$", description="한 종만 수집"),
     db: Session = Depends(get_db),
     _: None = Depends(require_admin_key),
 ):
@@ -341,7 +346,8 @@ def admin_collect(
     if not acquire_collect_lock():
         raise HTTPException(status_code=409, detail="collection already running")
     try:
-        return collect_notices(db, pages=pages, num_of_rows=rows, embed_images=embed_images)
+        extra = {"upkinds": [SPECIES_UPKIND[species]]} if species else {}
+        return collect_notices(db, pages=pages, num_of_rows=rows, embed_images=embed_images, **extra)
     finally:
         release_collect_lock()
 
@@ -361,6 +367,7 @@ def _notice_public(notice: NoticeRow, dist_km: float | None = None) -> NearbyNot
         age=notice.age,
         features=notice.features or "",
         kind_full=notice.kind_full or "",
+        species=notice.species or "dog",
         sex=notice.sex or "",
         neuter=notice.neuter or "",
         weight=notice.weight or "",
@@ -387,6 +394,7 @@ def notices_nearby(
     lng: float | None = Query(None),
     region: str | None = Query(None, description="시도/시군구 (좌표가 없을 때 기준점, 기본 서울)"),
     kind: str | None = Query(None, description="품종"),
+    species: str | None = Query(None, pattern="^(dog|cat)$", description="dog 또는 cat"),
     color: str | None = Query(None, description="색상"),
     days: int | None = Query(None, ge=1, le=365, description="발견일 최근 N일"),
     radius: float | None = Query(None, ge=0, le=2000, description="반경(km)"),
@@ -403,6 +411,7 @@ def notices_nearby(
         lng=lng,
         region=region,
         kind=kind,
+        species=species,
         color=color,
         days=days,
         radius=radius,

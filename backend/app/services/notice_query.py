@@ -73,10 +73,13 @@ def _color_ok(notice, color: str | None) -> bool:
     return bool(set(color_set(q)) & set(color_set(notice.color or "")))
 
 
-def _matchable_core(db: Session):
+def _matchable_core(db: Session, species: str | None = None):
+    base = select(*_LIST_COLS)
+    if species:
+        base = base.where(NoticeRow.species == species)
     rows = list(
         db.execute(
-            select(*_LIST_COLS).where(
+            base.where(
                 NoticeRow.source != "seed",
                 or_(NoticeRow.process_state.is_(None), NoticeRow.process_state != STALE_STATE),
             )
@@ -84,7 +87,7 @@ def _matchable_core(db: Session):
     )
     if rows:
         return rows
-    return list(db.execute(select(*_LIST_COLS)))
+    return list(db.execute(base))
 
 
 def load_notice(db: Session, notice_id: str) -> NoticeRow | None:
@@ -113,6 +116,7 @@ def list_nearby(
     lng: float | None = None,
     region: str | None = None,
     kind: str | None = None,
+    species: str | None = None,
     color: str | None = None,
     days: int | None = None,
     radius: float | None = None,
@@ -120,7 +124,7 @@ def list_nearby(
     page_size: int = 20,
 ) -> dict[str, Any]:
     origin_lat, origin_lng, origin_label = resolve_origin(lat, lng, region)
-    notices = _matchable_core(db)
+    notices = _matchable_core(db, species)
     cutoff = _today() - timedelta(days=days) if days and days > 0 else None
 
     rows: list[tuple[str, float | None]] = []

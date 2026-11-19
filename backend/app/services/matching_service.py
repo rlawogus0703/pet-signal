@@ -72,11 +72,13 @@ def detail_of(ms: MatchScore) -> dict:
     }
 
 
-def matchable_notices(db: Session, *, light: bool = False) -> list[NoticeRow]:
+def matchable_notices(db: Session, *, light: bool = False, species: str | None = None) -> list[NoticeRow]:
     heavy = [NoticeRow.raw_json, NoticeRow.image_embedding_json]
     if light:
         heavy += [NoticeRow.text_embedding_json]
     base = select(NoticeRow).options(*[defer(c) for c in heavy])
+    if species:
+        base = base.where(NoticeRow.species == species)
     real = db.scalars(
         base.where(
             NoticeRow.source != "seed",
@@ -93,7 +95,7 @@ def rematch_lost_dog(db: Session, lost_dog_id: str) -> list[MatchResultRow]:
     if not dog:
         return []
     ensure_dog_embeddings(dog)
-    notices = matchable_notices(db)
+    notices = matchable_notices(db, species=dog.species or "dog")
 
     for old in db.scalars(select(MatchResultRow).where(MatchResultRow.lost_dog_id == lost_dog_id)):
         db.delete(old)

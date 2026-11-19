@@ -91,6 +91,7 @@ def upsert_record(
         notice_start=rec.notice_start,
         notice_end=rec.notice_end,
         notice_url=rec.notice_url,
+        species=rec.species or "dog",
         breed_norm=norm_breed(rec.breed),
         color_norm=norm_color(rec.color),
         raw_json=json.dumps(rec.raw, ensure_ascii=False),
@@ -189,11 +190,17 @@ def collect_notices(
     embed_images: bool | None = None,
     sources: list[NoticeSource] | None = None,
     page_no: int | None = None,
+    upkinds: list[str] | None = None,
 ) -> dict:
     st = get_settings()
     pages = pages or st.collect_pages
     rows = num_of_rows or st.collect_rows
     embed_images = st.embed_images_on_collect if embed_images is None else embed_images
+    partial = bool(upkinds) and set(upkinds) != set(st.collect_upkind_list)
+    if sources is None and upkinds:
+        from app.sources.animal_api import AnimalProtectionSource
+
+        sources = [AnimalProtectionSource(upkinds=upkinds)]
     if sources is None:
         from app.sources.registry import available_sources
 
@@ -207,7 +214,7 @@ def collect_notices(
     for src in active:
         if hasattr(src, "iter_pages"):
             info = _collect_paged(db, src, rows=rows, pages=pages, result=result)
-            if info.get("complete"):
+            if info.get("complete") and not partial:
                 info.update(mark_stale(db, src.name, run_start))
             result["fetched"] += info["fetched"]
             result["upserted"] += info["new"]

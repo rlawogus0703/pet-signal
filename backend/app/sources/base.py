@@ -33,6 +33,7 @@ class NoticeRecord:
     notice_start: date | None = None
     notice_end: date | None = None
     notice_url: str = ""
+    species: str = "dog"
     raw: dict = field(default_factory=dict)
 
 

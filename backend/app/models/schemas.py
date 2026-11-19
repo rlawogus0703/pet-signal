@@ -1,6 +1,10 @@
 from datetime import date, datetime
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
+
+Species = Literal["dog", "cat"]
 
 
 class LostDogCreate(BaseModel):
@@ -14,6 +18,7 @@ class LostDogCreate(BaseModel):
     lost_lat: float
     lost_lng: float
     lost_address: str = ""
+    species: Species = "dog"
 
 
 class LostDogOut(BaseModel):
@@ -32,6 +37,7 @@ class LostDogOut(BaseModel):
     has_photo: bool = False
     photo_proxy_url: str | None = None
     image_method: str | None = None
+    species: str = "dog"
 
 
 class RuleItemOut(BaseModel):
@@ -101,6 +107,7 @@ class CandidateOut(BaseModel):
     process_state: str = ""
     notice_start: date | None = None
     notice_end: date | None = None
+    species: str = "dog"
     common_keywords: list[str] = Field(default_factory=list)
     matched_attributes: list[str] = Field(default_factory=list)
     dist_km: float | None = None
@@ -187,6 +194,7 @@ class NearbyNoticeOut(BaseModel):
     notice_end: date | None = None
     notice_url: str = ""
     source: str = "seed"
+    species: str = "dog"
 
 
 class NearbyNoticeListOut(BaseModel):

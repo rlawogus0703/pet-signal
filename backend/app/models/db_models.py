@@ -37,6 +37,7 @@ class LostDogRow(Base):
     image_embedding_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     image_embed_method: Mapped[str | None] = mapped_column(String(32), nullable=True)
     photo_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    species: Mapped[str] = mapped_column(String(8), default="dog", server_default="dog")
 
 
 class NoticeRow(Base):
@@ -77,6 +78,7 @@ class NoticeRow(Base):
     image_embed_method: Mapped[str | None] = mapped_column(String(32), nullable=True)
     image_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     collected_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    species: Mapped[str] = mapped_column(String(8), default="dog", server_default="dog")
 
 
 class MatchResultRow(Base):

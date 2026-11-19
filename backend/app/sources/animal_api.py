@@ -14,6 +14,9 @@ log = logging.getLogger(__name__)
 
 NOTICE_URL = "https://www.animal.go.kr/front/awtis/protection/protectionList.do"
 DOG_UPKIND = "417000"
+CAT_UPKIND = "422400"
+UPKIND_SPECIES = {DOG_UPKIND: "dog", CAT_UPKIND: "cat"}
+SPECIES_UPKIND = {v: k for k, v in UPKIND_SPECIES.items()}
 KST = timezone(timedelta(hours=9))
 
 
@@ -31,7 +34,19 @@ def _s(v) -> str:
     return "" if v is None else str(v).strip()
 
 
-def parse_item(it: dict) -> NoticeRecord | None:
+def item_species(it: dict, default: str = "dog") -> str:
+    up = _s(it.get("upKindCd"))
+    if up in UPKIND_SPECIES:
+        return UPKIND_SPECIES[up]
+    blob = f"{_s(it.get('upKindNm'))} {_s(it.get('kindFullNm'))} {_s(it.get('kindCd'))}"
+    if "고양이" in blob:
+        return "cat"
+    if "[개]" in blob or _s(it.get("upKindNm")) == "개":
+        return "dog"
+    return default
+
+
+def parse_item(it: dict, species: str = "dog") -> NoticeRecord | None:
     nid = _s(it.get("desertionNo"))
     if not nid:
         return None
@@ -50,7 +65,8 @@ def parse_item(it: dict) -> NoticeRecord | None:
         notice_id=nid,
         source="animal_api",
         notice_no=_s(it.get("noticeNo")) or nid,
-        breed=breed.replace("[개]", "").strip(),
+        breed=breed.replace("[개]", "").replace("[고양이]", "").strip(),
+        species=item_species(it, species),
         kind_full=kind_full,
         color=_s(it.get("colorCd")),
         age=_s(it.get("age")) or None,
@@ -92,11 +108,12 @@ def extract_items(payload: dict) -> tuple[list[dict], int, str, str]:
 class AnimalProtectionSource(NoticeSource):
     name = "animal_api"
 
-    def __init__(self, service_key: str | None = None, base: str | None = None, client: httpx.Client | None = None):
+    def __init__(self, service_key: str | None = None, base: str | None = None, client: httpx.Client | None = None, upkinds: list[str] | None = None):
         st = get_settings()
         self.service_key = service_key or st.decoded_service_key
         self.base = base or st.public_api_base
         self.client = client
+        self.upkinds = list(upkinds) if upkinds else list(st.collect_upkind_list)
 
     def enabled(self) -> bool:
         return bool(self.service_key)
@@ -139,21 +156,24 @@ class AnimalProtectionSource(NoticeSource):
         own = self.client is None
         client = self.client or httpx.Client(timeout=60.0)
         try:
-            for state in states:
-                for page in range(1, max(1, max_pages) + 1):
-                    params = {
-                        "serviceKey": self.service_key,
-                        "_type": "json",
-                        "upkind": DOG_UPKIND,
-                        "pageNo": page,
-                        "numOfRows": rows,
-                        **self.state_params(state),
-                    }
-                    items, total = self._get_page(client, params)
-                    recs = [r for r in (parse_item(it) for it in items) if r]
-                    yield state, recs, total, page
-                    if len(items) < rows or page * rows >= total:
-                        break
+            for upkind in self.upkinds:
+                species = UPKIND_SPECIES.get(upkind, "dog")
+                for state in states:
+                    key = state if species == "dog" else f"{state}:{species}"
+                    for page in range(1, max(1, max_pages) + 1):
+                        params = {
+                            "serviceKey": self.service_key,
+                            "_type": "json",
+                            "upkind": upkind,
+                            "pageNo": page,
+                            "numOfRows": rows,
+                            **self.state_params(state),
+                        }
+                        items, total = self._get_page(client, params)
+                        recs = [r for r in (parse_item(it, species) for it in items) if r]
+                        yield key, recs, total, page
+                        if len(items) < rows or page * rows >= total:
+                            break
         finally:
             if own:
                 client.close()

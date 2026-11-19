@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     collect_rows: int = 1000
     collect_states: str = "notice,protect"
     collect_protect_days: int = 90
+    collect_upkinds: str = "417000,422400"
     embed_batch_per_run: int = 3000
     embed_chunk: int = 100
     embed_time_budget_seconds: int = 1200
@@ -67,6 +68,10 @@ class Settings(BaseSettings):
     @property
     def collect_state_list(self) -> list[str]:
         return [x.strip() for x in self.collect_states.split(",") if x.strip()]
+
+    @property
+    def collect_upkind_list(self) -> list[str]:
+        return [x.strip() for x in self.collect_upkinds.split(",") if x.strip()]
 
     @property
     def sqlalchemy_database_url(self) -> str:
