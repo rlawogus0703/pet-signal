@@ -106,6 +106,9 @@ COLOR_SYNONYMS = {
     "얼룩": "spotted",
     "점박이": "spotted",
     "바둑": "spotted",
+    "치즈": "yellow",
+    "고등어": "gray",
+    "턱시도": "black",
 }
 
 COLOR_NEIGHBOR_PAIRS = [
