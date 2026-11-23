@@ -98,7 +98,10 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   void _move(LatLng p, double zoom) {
-    if (_ready) _map.move(p, zoom);
+    if (!_ready) return;
+    final size = MediaQuery.sizeOf(context);
+    final up = _chatOpen && size.width < 700 ? -size.height * 0.2 : 0.0;
+    _map.move(p, zoom, offset: Offset(0, up));
   }
 
   Future<void> _load({LatLng? center, String? region}) async {
