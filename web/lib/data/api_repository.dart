@@ -167,6 +167,47 @@ class ApiRepository implements PetSignalRepository {
   }
 
   @override
+  Future<NearbyPage> mapNotices({double? lat, double? lng, String? region, String? species, int limit = 300}) async {
+    final q = <String, String>{
+      'limit': '$limit',
+      if (lat != null) 'lat': '$lat',
+      if (lng != null) 'lng': '$lng',
+      if (region != null && region.isNotEmpty) 'region': region,
+      if (species != null && species.isNotEmpty) 'species': species,
+    };
+    final res = await _client.get(_u('/api/v1/notices/map', q), headers: _headers());
+    if (res.statusCode != 200) {
+      throw StateError('map failed: ${res.statusCode} ${res.body}');
+    }
+    final j = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+    final items = ((j['items'] as List?) ?? [])
+        .map((e) => BrowseNotice.fromJson(e as Map<String, dynamic>, baseUrl: baseUrl))
+        .toList();
+    return NearbyPage(
+      originLat: (j['origin_lat'] as num).toDouble(),
+      originLng: (j['origin_lng'] as num).toDouble(),
+      originLabel: (j['origin_label'] as String?) ?? '',
+      total: (j['total'] as num?)?.toInt() ?? items.length,
+      page: 1,
+      pageSize: limit,
+      items: items,
+    );
+  }
+
+  @override
+  Future<ChatAnswer> chat(String message, {double? lat, double? lng}) async {
+    final res = await _client.post(
+      _u('/api/v1/chat'),
+      headers: _headers(json: true),
+      body: jsonEncode({'message': message, 'lat': lat, 'lng': lng}),
+    );
+    if (res.statusCode != 200) {
+      throw StateError('chat failed: ${res.statusCode} ${res.body}');
+    }
+    return ChatAnswer.fromJson(jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>, baseUrl: baseUrl);
+  }
+
+  @override
   Future<BrowseNotice> getNotice(String noticeId) async {
     final res = await _client.get(_u('/api/v1/notices/$noticeId'), headers: _headers());
     if (res.statusCode != 200) throw StateError('get notice failed: ${res.statusCode}');

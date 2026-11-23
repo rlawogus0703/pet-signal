@@ -231,4 +231,21 @@ class MockRepository implements PetSignalRepository {
     final n = exampleNotices().firstWhere((e) => e.noticeId == noticeId);
     return _fromExample(n);
   }
+
+  @override
+  Future<NearbyPage> mapNotices({double? lat, double? lng, String? region, String? species, int limit = 300}) =>
+      listNearbyNotices(lat: lat, lng: lng, region: region, species: species, pageSize: limit);
+
+  @override
+  Future<ChatAnswer> chat(String message, {double? lat, double? lng}) async {
+    return ChatAnswer(
+      reply: '챗봇은 서버에 연결했을 때 쓸 수 있어요.',
+      matched: false,
+      centerLat: lat ?? 37.5665,
+      centerLng: lng ?? 126.9780,
+      zoom: 11,
+      total: 0,
+      items: const [],
+    );
+  }
 }

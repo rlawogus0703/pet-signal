@@ -7,7 +7,7 @@ import 'about_screen.dart';
 import 'auth_screen.dart';
 import 'candidates_screen.dart';
 import 'home_screen.dart';
-import 'nearby_screen.dart';
+import 'map_screen.dart';
 import 'my_page_screen.dart';
 import 'notifications_screen.dart';
 import 'register_screen.dart';
@@ -37,7 +37,7 @@ class AppShell extends StatelessWidget {
     if (s.showAbout) return const AboutScreen();
     final Widget page = switch (s.tab) {
       0 => const HomeScreen(),
-      1 => const NearbyScreen(),
+      1 => const NearbyTab(),
       2 => const RegisterScreen(),
       3 => const CandidatesScreen(),
       4 => const NotificationsScreen(),

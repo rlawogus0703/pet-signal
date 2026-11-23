@@ -47,4 +47,8 @@ abstract class PetSignalRepository {
   });
 
   Future<BrowseNotice> getNotice(String noticeId);
+
+  Future<NearbyPage> mapNotices({double? lat, double? lng, String? region, String? species, int limit = 300});
+
+  Future<ChatAnswer> chat(String message, {double? lat, double? lng});
 }

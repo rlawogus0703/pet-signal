@@ -139,3 +139,40 @@ class NearbyPage {
     required this.items,
   });
 }
+
+class ChatAnswer {
+  final String reply;
+  final bool matched;
+  final String? regionLabel;
+  final double centerLat;
+  final double centerLng;
+  final int zoom;
+  final int total;
+  final List<BrowseNotice> items;
+
+  const ChatAnswer({
+    required this.reply,
+    required this.matched,
+    this.regionLabel,
+    required this.centerLat,
+    required this.centerLng,
+    required this.zoom,
+    required this.total,
+    required this.items,
+  });
+
+  factory ChatAnswer.fromJson(Map<String, dynamic> j, {String? baseUrl}) {
+    return ChatAnswer(
+      reply: (j['reply'] as String?) ?? '',
+      matched: j['matched'] == true,
+      regionLabel: j['region_label'] as String?,
+      centerLat: (j['center_lat'] as num).toDouble(),
+      centerLng: (j['center_lng'] as num).toDouble(),
+      zoom: (j['zoom'] as num?)?.toInt() ?? 11,
+      total: (j['total'] as num?)?.toInt() ?? 0,
+      items: ((j['items'] as List?) ?? [])
+          .map((e) => BrowseNotice.fromJson(e as Map<String, dynamic>, baseUrl: baseUrl))
+          .toList(),
+    );
+  }
+}
