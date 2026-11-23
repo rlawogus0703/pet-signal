@@ -183,9 +183,9 @@ def center_of(q: ChatQuery) -> tuple[float, float, int] | None:
 
 def describe(q: ChatQuery) -> str:
     animal = "고양이" if q.species == "cat" else ("강아지" if q.species == "dog" else "")
+    if q.kind and BREED_SYNONYMS.get(q.kind) != "mix":
+        animal = ""
     parts = [p for p in (q.color, q.kind, animal) if p]
-    if q.kind and animal and q.kind in ("코숏", "코리안숏헤어"):
-        parts = [p for p in parts if p != animal]
     return " ".join(parts)
 
 

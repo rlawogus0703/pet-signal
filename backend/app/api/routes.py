@@ -480,7 +480,7 @@ def chat(body: ChatIn, db: Session = Depends(get_db)):
     limit = max(1, min(500, body.limit))
     data = list_nearby(
         db, lat=lat, lng=lng, kind=q.kind, species=q.species, color=q.color,
-        area=chat_search.area_filter(q), page_size=limit, max_page_size=500,
+        area=chat_search.area_filter(q), page_size=limit, max_page_size=500, strict_color=True,
     )
     items = [_notice_public(n, d) for n, d in data["items"]]
     if not c and not near_me and items:

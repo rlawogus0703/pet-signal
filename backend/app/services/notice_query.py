@@ -62,7 +62,7 @@ def _kind_ok(notice, kind: str | None) -> bool:
     return False
 
 
-def _color_ok(notice, color: str | None) -> bool:
+def _color_ok(notice, color: str | None, strict: bool = False) -> bool:
     if not color or not color.strip():
         return True
     q = color.strip()
@@ -72,6 +72,8 @@ def _color_ok(notice, color: str | None) -> bool:
     nc = notice.color_norm or norm_color(notice.color)
     if nq and nc and nq == nc:
         return True
+    if strict:
+        return False
     return bool(set(color_set(q)) & set(color_set(notice.color or "")))
 
 
@@ -131,6 +133,7 @@ def list_nearby(
     page_size: int = 20,
     area: list[list[str]] | None = None,
     max_page_size: int = 100,
+    strict_color: bool = False,
 ) -> dict[str, Any]:
     origin_lat, origin_lng, origin_label = resolve_origin(lat, lng, region)
     notices = _matchable_core(db, species)
@@ -138,7 +141,7 @@ def list_nearby(
 
     rows: list[tuple[str, float | None]] = []
     for n in notices:
-        if not _kind_ok(n, kind) or not _color_ok(n, color):
+        if not _kind_ok(n, kind) or not _color_ok(n, color, strict_color):
             continue
         if area and not _area_ok(n, area):
             continue
