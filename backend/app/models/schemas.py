@@ -205,3 +205,24 @@ class NearbyNoticeListOut(BaseModel):
     page: int
     page_size: int
     items: list[NearbyNoticeOut]
+
+
+class ChatIn(BaseModel):
+    message: str
+    lat: float | None = None
+    lng: float | None = None
+    limit: int = 300
+
+
+class ChatOut(BaseModel):
+    reply: str
+    matched: bool
+    region_label: str | None = None
+    species: str | None = None
+    kind: str | None = None
+    color: str | None = None
+    center_lat: float
+    center_lng: float
+    zoom: int
+    total: int
+    items: list[NearbyNoticeOut]

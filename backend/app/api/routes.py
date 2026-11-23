@@ -25,6 +25,8 @@ from app.models.schemas import (
     ScoreBreakdown,
     NearbyNoticeOut,
     NearbyNoticeListOut,
+    ChatIn,
+    ChatOut,
 )
 from app.ai import image_embedder, text_similarity
 from app.services.rule_points import CAPTION, MAX_POINTS, NOTE, RULE_LABELS, RULE_POINTS, RULE_VERSION
@@ -36,6 +38,7 @@ from app.services.matching_service import rematch_lost_dog
 from app.services.notice_state import STALE_STATE
 from app.services.notice_query import load_notice, list_nearby
 from app.services.seed import seed_notices
+from app.services import chat_search
 from app.sources.animal_api import SPECIES_UPKIND
 
 router = APIRouter(prefix="/api/v1")
@@ -426,6 +429,73 @@ def notices_nearby(
         total=data["total"],
         page=data["page"],
         page_size=data["page_size"],
+        items=items,
+    )
+
+
+@router.get("/notices/map", response_model=NearbyNoticeListOut)
+def notices_map(
+    lat: float | None = Query(None),
+    lng: float | None = Query(None),
+    region: str | None = Query(None),
+    kind: str | None = Query(None),
+    species: str | None = Query(None, pattern="^(dog|cat)$"),
+    color: str | None = Query(None),
+    limit: int = Query(300, ge=1, le=500),
+    db: Session = Depends(get_db),
+):
+    """지도에 올릴 공고를 기준점에서 가까운 순으로 봅니다."""
+    if (lat is None) != (lng is None):
+        lat, lng = None, None
+    data = list_nearby(
+        db, lat=lat, lng=lng, region=region, kind=kind, species=species, color=color,
+        page_size=limit, max_page_size=500,
+    )
+    return NearbyNoticeListOut(
+        origin_lat=data["origin_lat"],
+        origin_lng=data["origin_lng"],
+        origin_label=data["origin_label"],
+        total=data["total"],
+        page=data["page"],
+        page_size=data["page_size"],
+        items=[_notice_public(n, d) for n, d in data["items"]],
+    )
+
+
+@router.post("/chat", response_model=ChatOut)
+def chat(body: ChatIn, db: Session = Depends(get_db)):
+    """'수원 갈색 푸들'처럼 말하면 지역·색상·품종을 골라 공고를 찾습니다."""
+    q = chat_search.parse_message(body.message)
+    near_me = body.lat is not None and body.lng is not None
+    if q.empty():
+        lat, lng = (body.lat, body.lng) if near_me else (37.5665, 126.9780)
+        return ChatOut(reply=chat_search.HELP, matched=False, center_lat=lat, center_lng=lng, zoom=11, total=0, items=[])
+    c = chat_search.center_of(q)
+    if c:
+        lat, lng, zoom = c
+    elif near_me:
+        lat, lng, zoom = body.lat, body.lng, 11
+    else:
+        lat, lng, zoom = 37.5665, 126.9780, 7
+    limit = max(1, min(500, body.limit))
+    data = list_nearby(
+        db, lat=lat, lng=lng, kind=q.kind, species=q.species, color=q.color,
+        area=chat_search.area_filter(q), page_size=limit, max_page_size=500,
+    )
+    items = [_notice_public(n, d) for n, d in data["items"]]
+    if not c and not near_me and items:
+        zoom = 7
+    return ChatOut(
+        reply=chat_search.reply_text(q, data["total"], len(items), near_me and not c),
+        matched=True,
+        region_label=q.region_label,
+        species=q.species,
+        kind=q.kind,
+        color=q.color,
+        center_lat=lat,
+        center_lng=lng,
+        zoom=zoom,
+        total=data["total"],
         items=items,
     )
 

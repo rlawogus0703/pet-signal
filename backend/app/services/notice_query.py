@@ -26,6 +26,8 @@ _LIST_COLS = (
     NoticeRow.found_lng,
     NoticeRow.source,
     NoticeRow.process_state,
+    NoticeRow.found_address,
+    NoticeRow.org_nm,
 )
 
 _HEAVY = (NoticeRow.raw_json, NoticeRow.text_embedding_json, NoticeRow.image_embedding_json)
@@ -71,6 +73,11 @@ def _color_ok(notice, color: str | None) -> bool:
     if nq and nc and nq == nc:
         return True
     return bool(set(color_set(q)) & set(color_set(notice.color or "")))
+
+
+def _area_ok(notice, area: list[list[str]]) -> bool:
+    blob = f"{notice.found_address or ''} {notice.org_nm or ''}"
+    return all(any(w in blob for w in group) for group in area)
 
 
 def _matchable_core(db: Session, species: str | None = None):
@@ -122,6 +129,8 @@ def list_nearby(
     radius: float | None = None,
     page: int = 1,
     page_size: int = 20,
+    area: list[list[str]] | None = None,
+    max_page_size: int = 100,
 ) -> dict[str, Any]:
     origin_lat, origin_lng, origin_label = resolve_origin(lat, lng, region)
     notices = _matchable_core(db, species)
@@ -130,6 +139,8 @@ def list_nearby(
     rows: list[tuple[str, float | None]] = []
     for n in notices:
         if not _kind_ok(n, kind) or not _color_ok(n, color):
+            continue
+        if area and not _area_ok(n, area):
             continue
         if cutoff is not None:
             if n.found_date is None or n.found_date < cutoff:
@@ -145,7 +156,7 @@ def list_nearby(
     rows.sort(key=lambda x: (x[1] is None, x[1] if x[1] is not None else 0, x[0]))
     total = len(rows)
     page = max(1, page)
-    page_size = max(1, min(100, page_size))
+    page_size = max(1, min(max_page_size, page_size))
     start = (page - 1) * page_size
     sliced = rows[start : start + page_size]
     by_id = notices_by_ids(db, [nid for nid, _ in sliced])
