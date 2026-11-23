@@ -478,15 +478,28 @@ def chat(body: ChatIn, db: Session = Depends(get_db)):
     else:
         lat, lng, zoom = 37.5665, 126.9780, 7
     limit = max(1, min(500, body.limit))
-    data = list_nearby(
-        db, lat=lat, lng=lng, kind=q.kind, species=q.species, color=q.color,
-        area=chat_search.area_filter(q), page_size=limit, max_page_size=500, strict_color=True,
-    )
+
+    def run(qq):
+        return list_nearby(
+            db, lat=lat, lng=lng, kind=qq.kind, species=qq.species, color=qq.color,
+            area=chat_search.area_filter(qq), page_size=limit, max_page_size=500, strict_color=True,
+        )
+
+    data = run(q)
+    prefix = ""
+    if data["total"] == 0 and q.sigungu:
+        wide = chat_search.ChatQuery(sido=q.sido, species=q.species, kind=q.kind, color=q.color)
+        wide_data = run(wide)
+        if wide_data["total"] > 0:
+            prefix = f"{q.short_region}에는 없어서 "
+            data, q = wide_data, wide
+            lat, lng, zoom = chat_search.center_of(wide) or (lat, lng, zoom)
     items = [_notice_public(n, d) for n, d in data["items"]]
+    reply = prefix + chat_search.reply_text(q, data["total"], len(items), near_me and not c)
     if not c and not near_me and items:
         zoom = 7
     return ChatOut(
-        reply=chat_search.reply_text(q, data["total"], len(items), near_me and not c),
+        reply=reply,
         matched=True,
         region_label=q.region_label,
         species=q.species,

@@ -190,17 +190,18 @@ def describe(q: ChatQuery) -> str:
 
 
 def reply_text(q: ChatQuery, total: int, shown: int, near_me: bool) -> str:
-    where = q.short_region or ("내 주변" if near_me else "전국")
+    where = q.short_region or "전국"
     what = describe(q)
     target = f"{what} 공고" if what else "공고"
     if total == 0:
         return f"{where}에서 {target}를 찾지 못했어요. 색상이나 품종을 빼고 다시 말해 보세요."
     msg = f"{where}에서 {target} {total}건 찾았어요."
     if shown < total:
-        msg += f" 가까운 {shown}건을 지도에 표시했어요."
+        base = "내 위치에서 " if near_me else ""
+        msg += f" {base}가까운 {shown}건을 지도에 표시했어요."
     else:
         msg += " 지도에 표시했어요."
     return msg
 
 
-HELP = "지역이나 색상, 품종을 말해 주세요. 예: '수원 갈색 푸들', '서울 강남 흰색 고양이'"
+HELP = "지역이나 색상, 품종을 말해 주세요. 예: '수원 갈색 푸들', '부산 치즈 고양이'"

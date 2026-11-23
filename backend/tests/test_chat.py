@@ -49,3 +49,19 @@ def test_chat_endpoint(tmp_path):
         assert r.status_code == 200 and r.json()["total"] == 4
     finally:
         app.dependency_overrides.pop(get_db, None)
+
+
+def test_chat_widens_to_sido(tmp_path):
+    client, TS = _client(tmp_path)
+    try:
+        db = TS()
+        db.add(NoticeRow(notice_id="E", source="animal_api", species="cat", breed="한국 고양이", color="흰색",
+                         found_date=date(2026, 11, 14), found_lat=37.6, found_lng=127.0,
+                         found_address="서울특별시 노원구", org_nm="서울특별시 노원구"))
+        db.commit()
+        db.close()
+        b = client.post("/api/v1/chat", json={"message": "서울 강남 흰색 고양이"}).json()
+        assert [i["notice_id"] for i in b["items"]] == ["E"]
+        assert b["reply"].startswith("강남구에는 없어서 서울특별시에서")
+    finally:
+        app.dependency_overrides.pop(get_db, None)
